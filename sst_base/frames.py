@@ -7,6 +7,12 @@ def normVector(v):
     n = np.sqrt(np.dot(v, v))
     return v/n
 
+def vec_len(v):
+    return np.sqrt(np.dot(v, v))
+
+def vec_angle(v1, v2):
+    return np.arccos(np.dot(v1, v2)/(vec_len(v1)*vec_len(v2)))
+
 def findOrthonormal(v1, v2):
     v3 = np.cross(v1, v2)
     return normVector(v3)
@@ -49,24 +55,25 @@ def rad_to_deg(d):
     return d*180.0/np.pi
 
 class Frame:
-    def __init__(self, p1, p2, p3):
+    def __init__(self, p1, p2, p3, parent=None):
         self.p0 = p1
         self._basis = constructBasis(p1, p2, p3)
         # r_offset
-        self.r0 = self._roffset()
+        self.r0 = rad_to_deg(self._roffset())
         self.A = changeBasisMatrix(*self._basis)
         self.Ainv = self.A.T
+        self.parent = parent
 
     def _roffset(self):
         n3 = self._basis[-1]
         x = n3[0]
         y = n3[1]
         theta = np.arctan(y/x)
-        if x > 0 and y > 0:
+        if x >= 0 and y >= 0:
             quad = 1
-        elif x < 0 and y > 0:
+        elif x < 0 and y >= 0:
             quad = 2
-        elif x < 0 and y < 0:
+        elif x <= 0 and y < 0:
             quad = 3
         else:
             quad = 4
@@ -76,6 +83,22 @@ class Frame:
             return theta + np.pi
         elif quad == 4:
             return theta + 2*np.pi
+
+    def _to_global(self, v):
+        return np.dot(self.A, v) + self.p0
+
+    def _to_frame(self, v):
+        return np.dot(self.Ainv, v - self.p0)
+
+    def _manip_to_global(self, v_manip, manip, r):
+        theta = deg_to_rad(r)
+        v_global = rotz(theta, v_manip) + manip
+        return v_global
+
+    def _global_to_manip(self, v_global, manip, r):
+        theta = deg_to_rad(r)
+        v_manip = rotz(-theta, v_global - manip)
+        return v_manip
         
     def frame_to_global(self, v_frame, manip=vec(0, 0, 0), r=0, rotation="frame"):
         """
@@ -86,11 +109,14 @@ class Frame:
         r: rotation of the frame (0 = grazing incidence, 90 = normal)
         """
         if rotation == 'frame':
-            theta = deg_to_rad(r) - self.r0
+            rg = r - self.r0
         else:
-            theta = deg_to_rad(r)
-        Rz = rotzMat(theta)
-        v_global = np.dot(Rz, np.dot(self.A, v_frame) + self.p0) + manip
+            rg = r
+        v_global = self._to_global(v_frame)
+        if self.parent is not None:
+            return self.parent.frame_to_global(v_global, manip, r=rg, rotation=rotation)
+        else:
+            v_global = self._manip_to_global(v_global, manip, r)
         return v_global
 
     def global_to_frame(self, v_global, manip=vec(0, 0, 0), r=0):
@@ -102,9 +128,11 @@ class Frame:
         manip: current position of manipulator
         r: rotation of the manipulator
         """
-        theta = deg_to_rad(r)
-        Rz_inv = rotzMat(-theta)
-        v_frame = np.dot(self.Ainv, np.dot(Rz_inv, v_global - manip) - self.p0)
+        if self.parent is not None:
+            v_manip = self.parent.global_to_frame(v_global, manip, r)
+        else:
+            v_manip = self._global_to_manip(v_global, manip, r)
+        v_frame = self._to_frame(v_manip)
         return v_frame
 
     def frame_to_beam(self, fx, fy, fz, fr=0):
@@ -116,7 +144,7 @@ class Frame:
         """
         v_frame = vec(fx, fy, fz)
         v_global = -1*self.frame_to_global(v_frame, r=fr)
-        gr = fr - rad_to_deg(self.r0)
+        gr = fr - self.r0
         gx, gy, gz = (v_global[0], v_global[1], v_global[2])
         return gx, gy, gz, gr
 
@@ -130,7 +158,7 @@ class Frame:
         manip = vec(gx, gy, gz)
         v_frame = self.origin_to_frame(manip, gr)
         fx, fy, fz = (v_frame[0], v_frame[1], v_frame[2])
-        fr = gr + rad_to_deg(self.r0)
+        fr = gr + self.r0
         return fx, fy, fz, fr
         
     def origin_to_frame(self, manip=vec(0, 0, 0), r=0):
@@ -144,6 +172,40 @@ class Frame:
         a = op[-1]/vp[-1]
         proj = op - a*vp
         return proj
+    
+class Side(Frame):
+    def __init__(self, *args, width=19.5, height=130, parent=None):
+        super().__init__(*args)
+        self.width=width
+        self.height=height
+        self.edges = [vec(0, 0, 0), vec(width, 0, 0), vec(width, height, 0), vec(0, height, 0)]
+
+    def real_edges(self, manip, r_manip):
+        re = []
+        for edge in self.edges:
+            real_coord = self.frame_to_global(edge, manip, r_manip, rotation='global')
+            re.append(real_coord)
+        return re
+
+    def project_real_edges(self, manip, r_manip):
+        re = self.real_edges(manip, r_manip)
+        ret = []
+        for edge in re:
+            ret.append(np.array([edge[0], edge[2]]))
+        return ret
+
+    def distance_to_beam(self, x, y, z, r):
+        """
+        r manipulator
+        """
+        manip = vec(x, y, z)
+        real_edges = self.project_real_edges(manip, r)
+        inPoly = isInPoly(vec(0, 0), *real_edges)
+        distance = getMinDist(vec(0, 0), *real_edges)
+        if inPoly:
+            return distance
+        else:
+            return -1*distance
 
 class Bar():
     def __init__(self, *args, width, height, nsides):
@@ -179,51 +241,19 @@ class Bar():
 
     def change_side(self, n):
         self.current_side = self.sides[n]
+
+    def load_subframe(self, x1, y1, x2, y2, side=1, t=0):
+        p1 = vec(x1, y1, t)
+        p2 = vec(x1, y2, t)
+        p3 = vec(x2, y1, t)
+        width= x2 - x1
+        height = y2 - y1
+        self.subframe = Side(p1, p2, p3, height=height, width=width, parent=self.sides[side])
     
-class Side(Frame):
-    def __init__(self, *args, width=19.5, height=130):
-        super().__init__(*args)
-        self.width=width
-        self.height=height
-        self.edges = [vec(0, 0, 0), vec(width, 0, 0), vec(width, height, 0), vec(0, height, 0)]
-
-    def real_edges(self, manip, r_manip):
-        re = []
-        for edge in self.edges:
-            real_coord = self.frame_to_global(edge, manip, r_manip, rotation='global')
-            re.append(real_coord)
-        return re
-
-    def project_real_edges(self, manip, r_manip):
-        re = self.real_edges(manip, r_manip)
-        ret = []
-        for edge in re:
-            ret.append(np.array([edge[0], edge[2]]))
-        return ret
-
-    def distance_to_beam(self, x, y, z, r):
-        """
-        r manipulator
-        """
-        manip = vec(x, y, z)
-        real_edges = self.project_real_edges(manip, r)
-        inPoly = isInPoly(vec(0, 0), *real_edges)
-        distance = getMinDist(vec(0, 0), *real_edges)
-        if inPoly:
-            return distance
-        else:
-            return -1*distance
-        
 def triarea(p1, p2, p3):
     n1 = p1 - p2
     n2 = p3 - p2
     return 0.5*(n1[0]*n2[1] - n1[1]*n2[0])
-
-def vec_len(v):
-    return np.sqrt(np.dot(v, v))
-
-def vec_angle(v1, v2):
-    return np.arccos(np.dot(v1, v2)/(vec_len(v1)*vec_len(v2)))
 
 def getPointAreas(p, *args):
     areas = []
