@@ -1,6 +1,7 @@
 import pytest
 
-from .frames import *
+from sst_base.frames import *
+from sst_base.linalg import vec
 
 @pytest.fixture
 def unit_frame():
@@ -67,26 +68,7 @@ def test_compound_frame(unit_frame90, compound_frame):
     vc4 = compound_frame.global_to_frame(v2, r=r)
     assert np.all(np.isclose(vu4, vc4))
 
-    manip = vec(*np.random.rand())
+    manip = vec(*np.random.rand(3))
     vu5 =   unit_frame90.global_to_frame(v2, manip=manip, r=r)
     vc5 = compound_frame.global_to_frame(v2, manip=manip, r=r)
     assert np.all(np.isclose(vu5, vc5))
-
-@pytest.fixture
-def unit_bar():
-    p1 = vec(0.5, 0, 0)
-    p2 = vec(0.5, 0, 1)
-    p3 = vec(0.5, 0.5, 0)
-    
-    bar = Bar(p1, p2, p3, width=1, height=10, nsides=4)
-    return bar
-
-def test_bar_edge_distances(unit_bar):
-    assert unit_bar.distance_to_beam(-0.5, 0, -1, 0) == 0
-    assert unit_bar.distance_to_beam(-0.5, -0.5, -1, 0) == 0
-    assert unit_bar.distance_to_beam(0.5, 0, -1, 0) == 0
-    assert unit_bar.distance_to_beam(0, 0, -2, 0) == 0.5
-
-def test_bar_subframe(unit_bar):
-    x1, y1, x2, y2 = (1, 1, 2, 2)
-    unit_bar.load_subframe(x1, y1, x2, y2, side=1)

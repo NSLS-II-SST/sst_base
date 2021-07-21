@@ -1,58 +1,6 @@
-import numpy as np
-
-def vec(*args):
-    return np.array(args)
-
-def normVector(v):
-    n = np.sqrt(np.dot(v, v))
-    return v/n
-
-def vec_len(v):
-    return np.sqrt(np.dot(v, v))
-
-def vec_angle(v1, v2):
-    return np.arccos(np.dot(v1, v2)/(vec_len(v1)*vec_len(v2)))
-
-def findOrthonormal(v1, v2):
-    v3 = np.cross(v1, v2)
-    return normVector(v3)
-
-def constructBasis(p1, p2, p3):
-    v1 = p3 - p1
-    v2 = p2 - p1
-    n2 = normVector(v2)
-    n3 = findOrthonormal(v1, n2)
-    n1 = findOrthonormal(n2, n3)
-    return n1, n2, n3
-
-def changeBasisMatrix(n1, n2, n3):
-    return np.vstack([n1, n2, n3]).T
-
-def constructBorders(p1, p2, p3, sidelength=1):
-    n1, n2, n3 = constructBasis(p1, p2, p3)
-    origin = p1
-    origin2 = n1*sidelength + origin
-    borders = {'n1': n1, 'n2': n2,
-               'o1': origin, 'o2': origin2}
-    return borders
-
-def rotzMat(theta):
-    return np.array([[np.cos(theta), -np.sin(theta), 0],
-                     [np.sin(theta),  np.cos(theta), 0],
-                     [            0,              0, 1]])
-
-def rotz(theta, v):
-    """
-    Rotate a vector by theta around the z axis
-    """
-    rz = rotzMat(theta)
-    return np.dot(rz, v)
-
-def deg_to_rad(d):
-    return d*np.pi/180.0
-
-def rad_to_deg(d):
-    return d*180.0/np.pi
+import numpy as np        
+from .linalg import *
+from .polygons import *
 
 class Frame:
     def __init__(self, p1, p2, p3, parent=None):
@@ -173,7 +121,10 @@ class Frame:
         proj = op - a*vp
         return proj
     
-class Side(Frame):
+class Panel(Frame):
+    """
+    A frame that has boundaries, making it a rectangle
+    """
     def __init__(self, *args, width=19.5, height=130, parent=None):
         super().__init__(*args)
         self.width=width
@@ -206,90 +157,4 @@ class Side(Frame):
             return distance
         else:
             return -1*distance
-
-class Bar():
-    def __init__(self, *args, width, height, nsides):
-        self.interior_angle = 360.0/nsides
-        self.width = width
-        self.height = height
-        self.sides = []
-        current_side = Side(*args, width=width, height=height)
-        self.sides.append(current_side)
-        for n in range(nsides - 1):
-            new_side = self._newSideFromSide(current_side, self.interior_angle)
-            self.sides.append(new_side)
-            current_side = new_side
-        self.current_side = self.sides[0]
-        
-    def _newSideFromSide(self, side, angle):
-        prev_edges = side.real_edges(vec(0, 0, 0), 0)
-        new_vector = vec(np.cos(np.pi - deg_to_rad(angle)), 0, -np.sin(np.pi - deg_to_rad(angle)))
-        p1 = prev_edges[1]
-        p2 = prev_edges[2]
-        p3 = side.frame_to_global(new_vector + side.edges[1], r=0, rotation="global")
-        return Side(p1, p2, p3, width=self.width, height=self.height)
-
-    def distance_to_beam(self, x, y, z, r):
-        distances = [side.distance_to_beam(x, y, z, r) for side in self.sides]
-        return np.max(distances)
-
-    def beam_to_frame(self, *args):
-        return self.current_side.beam_to_frame(*args)
-
-    def frame_to_beam(self, *args):
-        return self.current_side.frame_to_beam(*args)
-
-    def change_side(self, n):
-        self.current_side = self.sides[n]
-
-    def load_subframe(self, x1, y1, x2, y2, side=1, t=0):
-        p1 = vec(x1, y1, t)
-        p2 = vec(x1, y2, t)
-        p3 = vec(x2, y1, t)
-        width= x2 - x1
-        height = y2 - y1
-        self.subframe = Side(p1, p2, p3, height=height, width=width, parent=self.sides[side])
     
-def triarea(p1, p2, p3):
-    n1 = p1 - p2
-    n2 = p3 - p2
-    return 0.5*(n1[0]*n2[1] - n1[1]*n2[0])
-
-def getPointAreas(p, *args):
-    areas = []
-    for n in range(len(args)):
-        areas.append(triarea(p, args[n-1], args[n]))
-    return areas
-
-def distFromTri(p, a, b):
-    area = np.abs(triarea(p, a, b))
-    d = vec_len(a - b)
-    s1 = vec_len(a - p)
-    s2 = vec_len(b - p)
-    if np.isclose(d, 0):
-        return min(s1, s2)
-    elif s1**2 > d**2 + s2**2:
-        return s2
-    elif s2**2 > d**2 + s1**2:
-        return s1
-    else:
-        return 2.0*area/d
-
-def getMinDist(p, *args):
-    distances = []
-    for n in range(len(args)):
-        distances.append(distFromTri(p, args[n-1], args[n]))
-    return np.min(distances)
-
-def prunePoints(*args):
-    pruned = []
-    for n in range(len(args)):
-        if not np.all(np.isclose(args[n-1] - args[n], 0.0)):
-            pruned.append(args[n])
-    return pruned
-        
-def isInPoly(p, *args):
-    polyPoints = prunePoints(*args)
-    areas = np.array(getPointAreas(p, *polyPoints))
-    return (np.all(areas < 0) or np.all(areas > 0))
-        

@@ -31,3 +31,16 @@ class ManipulatorBase(PseudoPositioner):
     def distance_to_beam(self):
         x, y, z, r = self.real_position
         return self.bar.distance_to_beam(x, y, z, r)
+
+    
+        
+# samplex, sampley, samplez, sampler
+# sx, sy, sz, sr shortcuts?
+# pseudo -> pseudox, pseudoy, pseudoz, pseudor ? makes clear what's what??
+# pseudo -> px, py, pz, pr shortcuts?
+# set_side
+# set_sample (automatically sets side)
+# yield from set_sample
+# def set_sample(sample_id):
+#    yield from abs_set(bar.sample, sample_id)
+
