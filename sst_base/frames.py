@@ -126,7 +126,7 @@ class Panel(Frame):
     A frame that has boundaries, making it a rectangle
     """
     def __init__(self, *args, width=19.5, height=130, parent=None):
-        super().__init__(*args)
+        super().__init__(*args, parent=parent)
         self.width=width
         self.height=height
         self.edges = [vec(0, 0, 0), vec(width, 0, 0), vec(width, height, 0), vec(0, height, 0)]
