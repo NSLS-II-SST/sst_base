@@ -27,12 +27,11 @@ class ManipulatorBase(PseudoPositioner):
 
     def to_pseudo_tuple(self, *args, **kwargs):
         return _to_position_tuple(self.PseudoPosition, *args, **kwargs, _cur=lambda: self.position)
-
     def distance_to_beam(self):
         x, y, z, r = self.real_position
         return self.bar.distance_to_beam(x, y, z, r)
 
-    
+   
         
 # samplex, sampley, samplez, sampler
 # sx, sy, sz, sr shortcuts?

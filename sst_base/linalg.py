@@ -40,8 +40,8 @@ def constructBasis(p1, p2, p3):
     """
     Construct a basis from three points
     p1: The origin of the vector space
-    p2: defines the first basis vector
-    p3: defines the plane of the second basis vector
+    p2: defines the y basis vector
+    p3: defines the plane of the x basis vector
 
     Returns three vectors, n1, n2, and n3, that form a basis.
     n2, the "y" vector, is defined by p2 - p1

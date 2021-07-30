@@ -32,6 +32,21 @@ def compound_frame():
     compound_frame = Frame(p1, p2, p3, parent=parent)
     return compound_frame
 
+#Write compound test r0 -- figure out what it should mean
+
+@pytest.mark.parametrize("xoffset", [-1, 0, 1])
+@pytest.mark.parametrize("yoffset", [-1, 0, 1])
+@pytest.mark.parametrize("zoffset", [-1, 0, 1])
+def test_translated_frame(unit_frame, xoffset, yoffset, zoffset):
+    offset_vec = vec(xoffset, yoffset, zoffset)
+    p1 = vec(0, 0, 0) + offset_vec
+    p2 = vec(0, 1, 0) + offset_vec
+    p3 = vec(1, 0, 0) + offset_vec
+    compound = Frame(p1, p2, p3, parent=unit_frame)
+    parent_vec = unit_frame.frame_to_global(offset_vec, r=90, rotation='global')
+    trans_vec = compound.frame_to_global(vec(0, 0, 0), r=90)
+    assert np.all(np.isclose(trans_vec, parent_vec))
+    
 def test_unit_frame_roffset(unit_frame, unit_frame90):
     assert unit_frame.r0 == 0
     assert unit_frame90.r0 == 90

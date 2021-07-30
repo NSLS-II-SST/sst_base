@@ -7,17 +7,34 @@ class Frame:
         self.p0 = p1
         self._basis = constructBasis(p1, p2, p3)
         # r_offset
-        self.r0 = rad_to_deg(self._roffset())
         self.A = changeBasisMatrix(*self._basis)
         self.Ainv = self.A.T
         self.parent = parent
-
+        self.r0 = rad_to_deg(self._roffset())
+        
     def _roffset(self):
-        n3 = self._basis[-1]
+        """
+        R offset relative to the GLOBAL frame (not the parent frame!)
+        
+        Important note! It is a BAKED IN ASSUMPTION that
+        these frames are being used for beamline samples, and
+        that the z-axis is perpendicular to the sample surface.
+        "Rotation" means the angle that the sample z-axis makes
+        with respect to the beam in the global x-y plane. This
+        makes sense because we only have a 4-axis manipulator.
+        If we had, god forbid, a 6-axis manipulator, none of this
+        1-axis rotation stuff would make sense, and you would just 
+        have to specify an exact vector, rather than an angle.
+        """
+
+        # we bootstrap the rotation by finding the z-vector in the global frame, even if
+        # we have a parent.
+        n3 = self.frame_to_global(vec(0, 0, 1), rotation='global') - self.frame_to_global(vec(0, 0, 0), rotation='global')
         x = n3[0]
         y = n3[1]
-        theta = np.arctan(y/x)
-        if x >= 0 and y >= 0:
+        if y == 0:
+            return 0
+        elif x >= 0 and y >= 0:
             quad = 1
         elif x < 0 and y >= 0:
             quad = 2
@@ -25,6 +42,7 @@ class Frame:
             quad = 3
         else:
             quad = 4
+        theta = np.arctan(y/x)
         if quad == 1:
             return theta
         elif quad == 2 or quad == 3:
@@ -62,9 +80,9 @@ class Frame:
             rg = r
         v_global = self._to_global(v_frame)
         if self.parent is not None:
-            return self.parent.frame_to_global(v_global, manip, r=rg, rotation=rotation)
+            return self.parent.frame_to_global(v_global, manip, r=rg, rotation='global')
         else:
-            v_global = self._manip_to_global(v_global, manip, r)
+            v_global = self._manip_to_global(v_global, manip, rg)
         return v_global
 
     def global_to_frame(self, v_global, manip=vec(0, 0, 0), r=0):
