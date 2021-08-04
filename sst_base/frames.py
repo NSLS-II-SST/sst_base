@@ -4,6 +4,9 @@ from .polygons import *
 
 class Frame:
     def __init__(self, p1, p2, p3, parent=None):
+        self.reset(p1, p2, p3, parent=parent)
+        
+    def reset(self, p1, p2, p3, parent=None):
         self.p0 = p1
         self._basis = constructBasis(p1, p2, p3)
         # r_offset

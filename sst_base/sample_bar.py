@@ -5,7 +5,7 @@ from .linalg import vec, deg_to_rad, rad_to_deg
 
 
 class Sample(Device):
-    sample_name        = Cpt(Signal, value="")
+    sample_name = Cpt(Signal, value="")
     sample_id   = Cpt(Signal, value=None)
     sample_desc = Cpt(Signal, value="")
     side        = Cpt(Signal, value=0)
@@ -30,10 +30,30 @@ class SampleHolder(Device):
         self.width = None
         self.height = None
         
-    def load_geometry(self, p1, p2, p3, width, height, nsides):
+    def load_geometry(self, width, height, nsides, points=None):
+        """
+        width: Width of side face in mm
+        height: Height of side in mm
+        nsides: Number of sides on bar (must be regular)
+        points: Optional, p1, p2, p3 defining location/orientation of side 1.
+        See documentation for sst_base/linalg.py:constructBasis
+        """
+        # will be inaccurate, need to persist a dictionary with rough defaults
+        # currently assuming manipulator attachment point is 0, 0, 0
         self.interior_angle = 360.0/nsides
         self.width = width
-        self.height = height        
+        self.height = height
+
+        y = -width/2.0
+        x = width/(2.0*np.tan(self.interior_angle/2.0))
+        z = -height
+        if points is None:
+            p1 = vec(x, y, z)
+            p2 = p1 + vec(0, 0, 1)
+            p3 = p1 + vec(0, 1, 0)
+        else:
+            p1, p2, p3 = points
+
         current_side = Panel(p1, p2, p3, width=width, height=height)
         self.add_side(current_side, 1)
         self.sides.append(current_side)
@@ -44,6 +64,10 @@ class SampleHolder(Device):
             current_side = new_side
         self.set("side1")
 
+    def calibrate(self, side_num, p1, p2, p3):
+        # have a list of calibrated/uncalibrated sides?
+        self.sides[side_num].reset(p1, p2, p3)
+        
     def add_side(self, side, side_num):
         sample_id = f"side{side_num}"
         self.sample_frames[sample_id] = side

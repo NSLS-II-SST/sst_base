@@ -15,7 +15,8 @@ def unit_bar():
     width = 1
     height=10
     nsides=4
-    bar = SampleHolder(p1, p2, p3, width, height, nsides, name='samplebar')
+    points = (p1, p2, p3)
+    bar = SampleHolder(p1, p2, p3, width, height, nsides, points=points, name='samplebar')
     return bar
 
 
