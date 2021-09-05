@@ -38,10 +38,12 @@ def make_user_dictionary(user_directory, user_info={}):
 
 def new_experiment(base_folder, gup, saf, name, md={}):
     year = datetime.date.today().year
+    start_date = datetime.date.today().isoformat()
     cycle = 3  # need to automatically set this in some metadata somewhere
     _md = {"name": name,
            "gup": gup,
-           "saf": saf}
+           "saf": saf,
+           "start_date": start_date}
     _md.update(md)
 
     user_directory = make_user_directory(base_folder, year, cycle, gup)

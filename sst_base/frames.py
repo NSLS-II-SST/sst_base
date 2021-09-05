@@ -2,10 +2,11 @@ import numpy as np
 from .linalg import *
 from .polygons import *
 
+
 class Frame:
     def __init__(self, p1, p2, p3, parent=None):
         self.reset(p1, p2, p3, parent=parent)
-        
+
     def reset(self, p1, p2, p3, parent=None):
         self.p0 = p1
         self._basis = constructBasis(p1, p2, p3)
@@ -14,11 +15,11 @@ class Frame:
         self.Ainv = self.A.T
         self.parent = parent
         self.r0 = rad_to_deg(self._roffset())
-        
+
     def _roffset(self):
         """
         R offset relative to the GLOBAL frame (not the parent frame!)
-        
+
         Important note! It is a BAKED IN ASSUMPTION that
         these frames are being used for beamline samples, and
         that the z-axis is perpendicular to the sample surface.
@@ -26,13 +27,15 @@ class Frame:
         with respect to the beam in the global x-y plane. This
         makes sense because we only have a 4-axis manipulator.
         If we had, god forbid, a 6-axis manipulator, none of this
-        1-axis rotation stuff would make sense, and you would just 
+        1-axis rotation stuff would make sense, and you would just
         have to specify an exact vector, rather than an angle.
         """
 
-        # we bootstrap the rotation by finding the z-vector in the global frame, even if
+        # we bootstrap the rotation by finding the z-vector in the global
+        # frame, even if
         # we have a parent.
-        n3 = self.frame_to_global(vec(0, 0, 1), rotation='global') - self.frame_to_global(vec(0, 0, 0), rotation='global')
+        n3 = (self.frame_to_global(vec(0, 0, 1), rotation='global') -
+              self.frame_to_global(vec(0, 0, 0), rotation='global'))
         x = n3[0]
         y = n3[1]
         if y == 0:
@@ -68,8 +71,9 @@ class Frame:
         theta = deg_to_rad(r)
         v_manip = rotz(-theta, v_global - manip)
         return v_manip
-        
-    def frame_to_global(self, v_frame, manip=vec(0, 0, 0), r=0, rotation="frame"):
+
+    def frame_to_global(self, v_frame, manip=vec(0, 0, 0), r=0,
+                        rotation="frame"):
         """
         Find the global coordinates of a point in the frame, given the
         rotation of the frame, and the manipulator position
@@ -83,7 +87,8 @@ class Frame:
             rg = r
         v_global = self._to_global(v_frame)
         if self.parent is not None:
-            return self.parent.frame_to_global(v_global, manip, r=rg, rotation='global')
+            return self.parent.frame_to_global(v_global, manip, r=rg,
+                                               rotation='global')
         else:
             v_global = self._manip_to_global(v_global, manip, rg)
         return v_global
@@ -129,10 +134,10 @@ class Frame:
         fx, fy, fz = (v_frame[0], v_frame[1], v_frame[2])
         fr = gr + self.r0
         return fx, fy, fz, fr
-        
+
     def origin_to_frame(self, manip=vec(0, 0, 0), r=0):
         return self.global_to_frame(vec(0, 0, 0), manip, r)
-        
+
     def project_beam_to_frame_xy(self, manip=vec(0, 0, 0), r=0):
         op = self.origin_to_frame(manip, r)
         theta = deg_to_rad(r)
@@ -141,21 +146,34 @@ class Frame:
         a = op[-1]/vp[-1]
         proj = op - a*vp
         return proj
-    
+
+    def distance_to_beam(self, gx, gy, gz, gr=0):
+        """
+        Given the manipulator coordinate (and rotation, for consistency),
+        find the distance from the beam to the coordinate origin, ignoring
+        the beam y-axis
+        """
+        op = self.frame_to_global(vec(0, 0, 0), manip=vec(gx, gy, gz), r=gr)
+        distance = np.sqrt(op[0]**2 + op[2]**2)
+        return distance
+
+
 class Panel(Frame):
     """
     A frame that has boundaries, making it a rectangle
     """
     def __init__(self, *args, width=19.5, height=130, parent=None):
         super().__init__(*args, parent=parent)
-        self.width=width
-        self.height=height
-        self.edges = [vec(0, 0, 0), vec(width, 0, 0), vec(width, height, 0), vec(0, height, 0)]
+        self.width = width
+        self.height = height
+        self.edges = [vec(0, 0, 0), vec(width, 0, 0), vec(width, height, 0),
+                      vec(0, height, 0)]
 
     def real_edges(self, manip, r_manip):
         re = []
         for edge in self.edges:
-            real_coord = self.frame_to_global(edge, manip, r_manip, rotation='global')
+            real_coord = self.frame_to_global(edge, manip, r_manip,
+                                              rotation='global')
             re.append(real_coord)
         return re
 
@@ -178,4 +196,4 @@ class Panel(Frame):
             return distance
         else:
             return -1*distance
-    
+

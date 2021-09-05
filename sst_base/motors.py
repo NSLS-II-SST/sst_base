@@ -2,7 +2,9 @@ from ophyd.sim import SynAxis
 from ophyd.positioner import SoftPositioner
 from ophyd import PseudoPositioner, PseudoSingle
 from ophyd import Component as Cpt
-from ophyd.pseudopos import pseudo_position_argument, real_position_argument, _to_position_tuple
+from ophyd.pseudopos import (pseudo_position_argument, real_position_argument,
+                             _to_position_tuple)
+
 
 class ManipulatorBase(PseudoPositioner):
     # Find some way to record all motors that moved!
@@ -10,7 +12,7 @@ class ManipulatorBase(PseudoPositioner):
     sy = Cpt(PseudoSingle)
     sz = Cpt(PseudoSingle)
     sr = Cpt(PseudoSingle)
-    
+
     def __init__(self, bar, *args, **kwargs):
         self.bar = bar
         super().__init__(*args, **kwargs)
@@ -26,13 +28,15 @@ class ManipulatorBase(PseudoPositioner):
         return self.PseudoPosition(sx=sx, sy=sy, sz=sz, sr=sr)
 
     def to_pseudo_tuple(self, *args, **kwargs):
-        return _to_position_tuple(self.PseudoPosition, *args, **kwargs, _cur=lambda: self.position)
+        return _to_position_tuple(self.PseudoPosition, *args, **kwargs,
+                                  _cur=lambda: self.position)
+
     def distance_to_beam(self):
         x, y, z, r = self.real_position
         return self.bar.distance_to_beam(x, y, z, r)
 
-   
-        
+
+
 # samplex, sampley, samplez, sampler
 # sx, sy, sz, sr shortcuts?
 # pseudo -> pseudox, pseudoy, pseudoz, pseudor ? makes clear what's what??

@@ -32,3 +32,17 @@ def get_user_md():
     config = get_config()
     user_directory = config['user_directory']
     return get_user_dictionary(user_directory)
+
+
+def print_beamtime_info():
+    try:
+        user_md = get_user_md()
+    except FileNotFoundError:
+        print("No Current Beamtime")
+        return
+
+    print("Current Beamtime Info:")
+    print(f"Name: {user_md['name']}")
+    print(f"Start Date: {user_md['start_date']}")
+    print(f"GUP: {user_md['gup']}")
+    print(f"SAF: {user_md['saf']}")
