@@ -219,6 +219,17 @@ class Frame:
 class Panel(Frame):
     """
     A frame that has boundaries, making it a rectangle
+
+    Parameters
+    ------------
+    p1 : vector
+        origin of the frame in the parent system
+    p2 : vector
+        defines the frame's y basis vector
+    p3 : vector
+        defines the plane of the x basis vector
+    parent : Frame, optional
+
     """
     def __init__(self, *args, width=19.5, height=130, parent=None):
         super().__init__(*args, parent=parent)
@@ -299,6 +310,6 @@ class Panel(Frame):
         inPoly = isInPoly(vec(0, 0), *real_edges)
         distance = getMinDist(vec(0, 0), *real_edges)
         if inPoly:
-            return distance
-        else:
             return -1*distance
+        else:
+            return distance

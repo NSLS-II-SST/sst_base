@@ -157,7 +157,7 @@ class SampleHolder(Device):
         if self._has_geometry:
             distances = [side.distance_to_beam(x, y, z, r)
                          for side in self.sides]
-            return np.max(distances)
+            return np.min(distances)
         else:
             distance = self.current_frame.distance_to_beam(x, y, z, r)
             return distance
