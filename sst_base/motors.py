@@ -35,7 +35,9 @@ class ManipulatorBase(PseudoPositioner):
         x, y, z, r = self.real_position
         return self.bar.distance_to_beam(x, y, z, r)
 
-
+    def sample_distance_to_beam(self):
+        x, y, z, r = self.real_position
+        return self.bar.sample_distance_to_beam(x, y, z, r)
 
 # samplex, sampley, samplez, sampler
 # sx, sy, sz, sr shortcuts?

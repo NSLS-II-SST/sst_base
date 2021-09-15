@@ -1,10 +1,21 @@
-import numpy as np        
+import numpy as np
 from .linalg import *
 from .polygons import *
 
 
 class Frame:
     def __init__(self, p1, p2, p3, parent=None):
+        """
+        Parameters
+        ------------
+        p1 : vector
+            origin of the frame in the parent system
+        p2 : vector
+            defines the frame's y basis vector
+        p3 : vector
+            defines the plane of the x basis vector
+        parent : Frame, optional
+        """
         self.reset(p1, p2, p3, parent=parent)
 
     def reset(self, p1, p2, p3, parent=None):
@@ -77,9 +88,16 @@ class Frame:
         """
         Find the global coordinates of a point in the frame, given the
         rotation of the frame, and the manipulator position
-        v_frame: frame vector
-        manip: current position of manipulator
-        r: rotation of the frame (0 = grazing incidence, 90 = normal)
+
+        Parameters
+        ------------
+        v_frame : vector
+            Coordinates of a point in the frame system
+        manip : vector
+            Manipulator coordinates
+        r : float, degrees
+            rotation of the frame
+            (0 = grazing incidence, 90 = normal)
         """
         if rotation == 'frame':
             rg = r - self.r0
@@ -95,12 +113,17 @@ class Frame:
 
     def global_to_frame(self, v_global, manip=vec(0, 0, 0), r=0):
         """
-        Find the frame coordinates of a point in the global system, 
+        Find the frame coordinates of a point in the global system,
         given the manipulator position and rotation
 
-        v_global: global vector
-        manip: current position of manipulator
-        r: rotation of the manipulator
+        Parameters
+        -----------
+        v_global : vector
+            global vector
+        manip : vector
+            current position of manipulator
+        r : float, degrees
+            rotation of the manipulator
         """
         if self.parent is not None:
             v_manip = self.parent.global_to_frame(v_global, manip, r)
@@ -113,9 +136,14 @@ class Frame:
         """
         Given a frame coordinate, and rotation, find the manipulator position and rotation
         that places the frame coordinate in the beam path
-        
-        return coordinate tuple
+
+        Returns
+        --------
+        coordinates : tuple
+            The x, y, z, r coordinates of the manipulator that put the
+            frame coordinate into the beam path
         """
+
         v_frame = vec(fx, fy, fz)
         v_global = -1*self.frame_to_global(v_frame, r=fr)
         gr = fr - self.r0
@@ -124,10 +152,24 @@ class Frame:
 
     def beam_to_frame(self, gx, gy, gz, gr=0):
         """
-        Given a manipulator coordinate and rotation, find the beam intersection position and 
-        incidence angle in the frame coordinates.
+        Given a manipulator coordinate and rotation, find the beam intersection
+        position and incidence angle in the frame coordinates.
 
-        return coordinate tuple
+        Parameters
+        ------------
+        gx : float
+            manipulator x coordinate
+        gy : float
+            manipulator y coordinate
+        gz : float
+            manipulator z coordinate
+        gr : float, degrees
+            manipulator r coordinate
+
+        Returns
+        --------
+        coordinates : tuple
+            The x, y, z, r coordinates of the beam in the frame system
         """
         manip = vec(gx, gy, gz)
         v_frame = self.origin_to_frame(manip, gr)
@@ -152,6 +194,22 @@ class Frame:
         Given the manipulator coordinate (and rotation, for consistency),
         find the distance from the beam to the coordinate origin, ignoring
         the beam y-axis
+
+        Parameters
+        ------------
+        gx : float
+            manipulator x coordinate
+        gy : float
+            manipulator y coordinate
+        gz : float
+            manipulator z coordinate
+        gr : float, degrees
+            manipulator r coordinate
+
+        Returns
+        --------
+        distance : float
+            Distance from the global y-axis (the beam) to the coordinate origin
         """
         op = self.frame_to_global(vec(0, 0, 0), manip=vec(gx, gy, gz), r=gr)
         distance = np.sqrt(op[0]**2 + op[2]**2)
@@ -170,6 +228,21 @@ class Panel(Frame):
                       vec(0, height, 0)]
 
     def real_edges(self, manip, r_manip):
+        """
+        Finds the vertices of the panel in global coordinate system,
+        given the manipulator position
+
+        Parameters
+        -----------
+        manip : vector
+            Manipulator x,y,z position vector
+        r_manip : float
+            Manipulator rotation in degrees
+
+        Returns
+        --------
+        Vertex positions in the global frame
+        """
         re = []
         for edge in self.edges:
             real_coord = self.frame_to_global(edge, manip, r_manip,
@@ -178,6 +251,20 @@ class Panel(Frame):
         return re
 
     def project_real_edges(self, manip, r_manip):
+        """
+
+        Parameters
+        ------------
+        manip : vector
+            Manipulator x,y,z position vector
+        r_manip : float
+            Manipulator rotation in degrees
+
+        Returns
+        --------
+        Vertex coordinates projected into the x-z axis
+        """
+
         re = self.real_edges(manip, r_manip)
         ret = []
         for edge in re:
@@ -186,8 +273,27 @@ class Panel(Frame):
 
     def distance_to_beam(self, x, y, z, r):
         """
-        r manipulator
+        Returns the distance from the beam to the closest edge of
+        the Panel, given a manipulator position of x, y, z, r
+
+        Parameters
+        -------------
+        x : float
+            manipulator x coordinate
+        y : float
+            manipulator y coordinate
+        z : float
+            manipulator z coordinate
+        r : float
+            manipulator r coordinate (in degrees)
+
+        Returns
+        ----------
+        distance : float
+            The sign of distance is negative if the beam is inside the Panel,
+            and positive if the beam is outside the Panel
         """
+
         manip = vec(x, y, z)
         real_edges = self.project_real_edges(manip, r)
         inPoly = isInPoly(vec(0, 0), *real_edges)
@@ -196,4 +302,3 @@ class Panel(Frame):
             return distance
         else:
             return -1*distance
-

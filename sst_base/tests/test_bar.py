@@ -44,6 +44,7 @@ def test_bar_edge_distances(unit_bar):
     assert unit_bar.distance_to_beam(-0.5, -0.5, -1, 0) == 0
     assert unit_bar.distance_to_beam(0.5, 0, -1, 0) == 0
     assert unit_bar.distance_to_beam(0, 0, -2, 0) == 0.5
+    assert unit_bar.distance_to_beam(0, 0, 2, 0) == -0.5
 
 
 def test_bar_subframe(unit_bar):

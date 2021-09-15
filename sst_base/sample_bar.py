@@ -6,15 +6,17 @@ from .linalg import vec, deg_to_rad, rad_to_deg
 
 class Sample(Device):
     sample_name = Cpt(Signal, value="")
-    sample_id   = Cpt(Signal, value=None)
+    sample_id = Cpt(Signal, value=None)
     sample_desc = Cpt(Signal, value="")
-    side        = Cpt(Signal, value=0)
+    side = Cpt(Signal, value=0)
+    origin = Cpt(Signal, value="")
 
     def set(self, md):
         self.sample_name.set(md['sample_name'])
         self.sample_id.set(md['sample_id'])
         self.sample_desc.set(md['sample_desc'])
         self.side.set(md['side'])
+        self.origin.set(md['origin'])
 
 
 class SampleHolder(Device):
@@ -79,7 +81,8 @@ class SampleHolder(Device):
         self.sides.append(side)
         self.add_frame(side, sample_id, sample_id, side_num)
 
-    def add_frame(self, frame, sample_id, name, side=-1, desc=""):
+    def add_frame(self, frame, sample_id, name, side=-1, desc="",
+                  origin='edge'):
         md = {"sample_id": sample_id,
               "sample_name": name,
               "side": side,
@@ -110,6 +113,7 @@ class SampleHolder(Device):
         frame = Panel(p1, p2, p3, height=height, width=width,
                       parent=self.sides[side - 1])
         self.add_frame(frame, sample_id, name, side, desc)
+        return frame
 
     @property
     def samples(self):
@@ -119,9 +123,17 @@ class SampleHolder(Device):
     def current_frame(self):
         return self.sample_frames[self.sample.sample_id.get()]
 
-    def set(self, sample_id):
-        md = self.sample_md[sample_id]
+    def set(self, sample_id, origin="edge"):
+        _md = self.sample_md[sample_id]
+        md = {"origin": origin}
+        md.update(_md)
         self.sample.set(md)
+
+    def set_frame_sample_edge(self, sample_id):
+        self.set(sample_id, "edge")
+
+    def set_frame_sample_center(self, sample_id):
+        self.set(sample_id, "center")
 
     def check_value(self, val):
         if val is None:
@@ -143,22 +155,69 @@ class SampleHolder(Device):
 
     def distance_to_beam(self, x, y, z, r):
         if self._has_geometry:
-            distances = [side.distance_to_beam(x, y, z, r) for side in self.sides]
+            distances = [side.distance_to_beam(x, y, z, r)
+                         for side in self.sides]
             return np.max(distances)
         else:
             distance = self.current_frame.distance_to_beam(x, y, z, r)
             return distance
 
-    def beam_to_frame(self, *args):
-        """
-        Beam coordinates in basis of current sample
-        """
+    def sample_distance_to_beam(self, x, y, z, r):
+        return self.current_frame.distance_to_beam(x, y, z, r)
 
-        return self.current_frame.beam_to_frame(*args)
+    def beam_to_frame(self, x, y, z, r):
+        """
+        Given a manipulator coordinate and rotation, find the beam intersection
+        position and incidence angle in the frame coordinates.
 
-    def frame_to_beam(self, *args):
+        Parameters
+        ------------
+        x : float
+            manipulator x coordinate
+        y : float
+            manipulator y coordinate
+        z : float
+            manipulator z coordinate
+        r : float, degrees
+            manipulator r coordinate
+
+        Returns
+        --------
+        coordinates : tuple
+            The x, y, z, r coordinates of the beam in the frame system
+        """
+        if self.sample.origin.get() == "edge":
+            return self.current_frame.beam_to_frame(x, y, z, r)
+        elif self.sample.origin.get() == "center":
+            _x, _y, z, r = self.current_frame.beam_to_frame(x, y, z, r)
+            x = _x - self.current_frame.width/2.0
+            y = _y - self.current_frame.height/2.0
+            return x, y, z, r
+
+    def frame_to_beam(self, x, y, z, r):
         """
         Current sample coordinates in beam (global) basis
-        """
 
-        return self.current_frame.frame_to_beam(*args)
+        Parameters
+        ------------
+        x : float
+            x coordinate in sample frame
+        y : float
+            y coordinate in sample frame
+        z : float
+            z coordinate in sample frame
+        r : float, degrees
+            rotation in sample frame
+
+        Returns
+        ---------
+        coordinates : tuple
+            The x, y, z, r coordinates of the manipulator that put the sample
+            spot into the beam path
+        """
+        if self.sample.origin.get() == "edge":
+            return self.current_frame.frame_to_beam(x, y, z, r)
+        elif self.sample.origin.get() == "center":
+            x0 = self.current_frame.width/2.0
+            y0 = self.current_frame.height/2.0
+            return self.current_frame.frame_to_beam(x + x0, y + y0, z, r)
