@@ -3,6 +3,7 @@ import numpy as np
 from sst_base.frames import Panel
 from sst_base.linalg import vec
 
+
 @pytest.fixture()
 def unit_panel():
     p1 = vec(1, 0, 0)
@@ -13,6 +14,7 @@ def unit_panel():
     panel = Panel(p1, p2, p3, width=width, height=height)
     return panel
 
+
 @pytest.fixture()
 def rotated_panel():
     p1 = vec(0, 0, 0)
@@ -22,7 +24,7 @@ def rotated_panel():
     width = 2
     panel = Panel(p1, p2, p3, width=width, height=height)
     return panel
-    
+
 
 def test_panel_position(unit_panel):
     coords = np.array(unit_panel.beam_to_frame(0, 0, 0, 0))
