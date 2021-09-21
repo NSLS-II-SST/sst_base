@@ -1,7 +1,9 @@
 from databroker.core import SingleRunCache
 import bluesky.preprocessors as bpp
-from bluesky.plan_stubs import mv
+from bluesky.plan_stubs import mv, mvr
+from bluesky.plans import count
 import numpy as np
+
 
 def find_max(plan, dets, *args, invert=False):
     """
@@ -53,7 +55,8 @@ def find_max_deriv(plan, dets, *args):
 
         detname = dets[0].name
         motname = motors[0].name
-        max_idx = np.argmax(np.abs(np.gradient(table[detname], table[motname])))
+        max_idx = np.argmax(np.abs(np.gradient(table[detname],
+                                               table[motname])))
         print(f"Maximum derivative found at step {max_idx} for detector {detname}")
         ret = []
         for m in motors:
@@ -63,3 +66,37 @@ def find_max_deriv(plan, dets, *args):
             yield from mv(m, max_val)
         return ret
     return (yield from inner_maximizer())
+
+
+def halfmax_adaptive(dets, motor, step=5, precision=1, maxct=None):
+    detname = dets[0].name
+
+    def ct():
+        src = SingleRunCache()
+
+        @bpp.subs_decorator(src.callback)
+        def inner_ct():
+            yield from count(dets)
+            run = src.retrieve()
+            table = run.primary.read()
+            return float(table[detname])
+        return (yield from inner_ct())
+
+    if maxct is None:
+        maxct = yield from ct()
+    current = maxct
+    while current > maxct/2.0:
+        yield from mvr(motor, step)
+        current = yield from ct()
+    if np.abs(step) > precision:
+        print(f"{detname} halfmax at {motor.name}:{motor.position}")
+        print(f"Value: {current}, Max: {maxct}, reducing step to {step/2.0}")
+        yield from mvr(motor, -1*step)
+        pos = yield from halfmax_adaptive(dets, motor, step=step/2.0,
+                                          precision=precision, maxct=maxct)
+    else:
+        print(f"{detname} halfmax at {motor.name}:{motor.position}")
+        print(f"Value: {current}, Max: {maxct}, precision: {precision} reached")
+        pos = motor.position
+        yield from mv(motor, pos)
+    return pos
