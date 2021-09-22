@@ -66,7 +66,7 @@ def find_max_deriv(plan, dets, *args):
             yield from mv(m, max_val)
         return ret
     return (yield from inner_maximizer())
-
+    
 
 def halfmax_adaptive(dets, motor, step=5, precision=1, maxct=None):
     detname = dets[0].name
@@ -100,3 +100,39 @@ def halfmax_adaptive(dets, motor, step=5, precision=1, maxct=None):
         pos = motor.position
         yield from mv(motor, pos)
     return pos
+
+
+def threshold_adaptive(dets, motor, threshold, step=2, limit=15):
+    """
+    Attempt to get a detector over a threshold by moving a motor\
+    """
+    detname = dets[0].name
+    def ct():
+        src = SingleRunCache()
+
+        @bpp.subs_decorator(src.callback)
+        def inner_ct():
+            yield from count(dets)
+            run = src.retrieve()
+            table = run.primary.read()
+            return float(table[detname])
+        return (yield from inner_ct())
+
+    pos = motor.position
+    maxpos = pos
+    current = yield from ct()
+    n = 0
+    maxcurrent = current
+    while current < threshold and n < limit:
+        yield from mvr(motor, step)
+        current = yield from ct()
+        if current > maxcurrent:
+            maxcurrent = current
+            maxpos = motor.position
+        n += 1
+    if current > threshold:
+        return motor.position
+    else:
+        raise ValueError(f"Detector {detname} did not exceed {threshold} after {limit} moves of " \
+                         f"{motor.name} with {step} step size. Maximum value was {maxcurrent} at {maxpos}."\
+                         f"Check if {motor.name} is going the right direction, and if {detname} is on.")
