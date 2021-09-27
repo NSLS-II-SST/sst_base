@@ -1,11 +1,14 @@
 from setuptools import setup, find_packages
 
+with open('requirements.txt') as f:
+    requirements = f.read().split()
+    
 setup(
-    author="Charles Titus",
-    author_email="charles.titus@nist.gov",
-    install_requires=["bluesky", "ophyd", "numpy"],
-    entry_points={"pytest11": ["sst_base_experiment = sst_base.tests.test_experiment_setup"]},
-    name="sst_base",
+    author="NIST Staff",
+    author_email=None,
+    description="Beamline hardware classes",
+    install_requires=requirements,
+    name="beamline_base",
     use_scm_version=True,
     packages=find_packages()
 )
