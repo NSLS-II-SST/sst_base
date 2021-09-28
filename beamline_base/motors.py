@@ -1,51 +1,179 @@
-from ophyd.sim import SynAxis
-from ophyd.positioner import SoftPositioner
-from ophyd import PseudoPositioner, PseudoSingle
+from ophyd import EpicsMotor, EpicsSignal
 from ophyd import Component as Cpt
-from ophyd.pseudopos import (pseudo_position_argument, real_position_argument,
-                             _to_position_tuple)
+import bluesky.plan_stubs as bps
+from beamline_base.printing import boxed_text, colored, whisper
 
 
-class ManipulatorBase(PseudoPositioner):
-    # Find some way to record all motors that moved!
-    sx = Cpt(PseudoSingle)
-    sy = Cpt(PseudoSingle)
-    sz = Cpt(PseudoSingle)
-    sr = Cpt(PseudoSingle)
+class FMBOEpicsMotor(EpicsMotor):
+    resolution = Cpt(EpicsSignal, ".MRES")
+    encoder = Cpt(EpicsSignal, ".REP")
+    clr_enc_lss = Cpt(EpicsSignal, "_ENC_LSS_CLR_CMD.PROC")
+    home_cmd = Cpt(EpicsSignal, "_HOME_CMD.PROC")
+    enable = Cpt(EpicsSignal, "_ENA_CMD.PROC")
+    kill = Cpt(EpicsSignal, "_KILL_CMD.PROC")
 
-    def __init__(self, bar, *args, **kwargs):
-        self.bar = bar
+    status_list = (
+        "MTACT",
+        "MLIM",
+        "PLIM",
+        "AMPEN",
+        "LOOPM",
+        "TIACT",
+        "INTMO",
+        "DWPRO",
+        "DAERR",
+        "DVZER",
+        "ABDEC",
+        "UWPEN",
+        "UWSEN",
+        "ERRTAG",
+        "SWPOC",
+        "ASSCS",
+        "FRPOS",
+        "HSRCH",
+        "SODPL",
+        "SOPL",
+        "HOCPL",
+        "PHSRA",
+        "PREFE",
+        "TRMOV",
+        "IFFE",
+        "AMFAE",
+        "AMFE",
+        "FAFOE",
+        "WFOER",
+        "INPOS",
+        "ENC_LSS",
+    )
+
+    ###################################################################
+    # this is the complete list of status signals defined in the FMBO #
+    # IOC for thier MCS8 motor controllers                            #
+    ###################################################################
+    mtact = Cpt(EpicsSignal, "_MTACT_STS")
+    mtact_desc = Cpt(EpicsSignal, "_MTACT_STS.DESC")
+    mlim = Cpt(EpicsSignal, "_MLIM_STS")
+    mlim_desc = Cpt(EpicsSignal, "_MLIM_STS.DESC")
+    plim = Cpt(EpicsSignal, "_PLIM_STS")
+    plim_desc = Cpt(EpicsSignal, "_PLIM_STS.DESC")
+    ampen = Cpt(EpicsSignal, "_AMPEN_STS")
+    ampen_desc = Cpt(EpicsSignal, "_AMPEN_STS.DESC")
+    loopm = Cpt(EpicsSignal, "_LOOPM_STS")
+    loopm_desc = Cpt(EpicsSignal, "_LOOPM_STS.DESC")
+    tiact = Cpt(EpicsSignal, "_TIACT_STS")
+    tiact_desc = Cpt(EpicsSignal, "_TIACT_STS.DESC")
+    intmo = Cpt(EpicsSignal, "_INTMO_STS")
+    intmo_desc = Cpt(EpicsSignal, "_INTMO_STS.DESC")
+    dwpro = Cpt(EpicsSignal, "_DWPRO_STS")
+    dwpro_desc = Cpt(EpicsSignal, "_DWPRO_STS.DESC")
+    daerr = Cpt(EpicsSignal, "_DAERR_STS")
+    daerr_desc = Cpt(EpicsSignal, "_DAERR_STS.DESC")
+    dvzer = Cpt(EpicsSignal, "_DVZER_STS")
+    dvzer_desc = Cpt(EpicsSignal, "_DVZER_STS.DESC")
+    abdec = Cpt(EpicsSignal, "_ABDEC_STS")
+    abdec_desc = Cpt(EpicsSignal, "_ABDEC_STS.DESC")
+    uwpen = Cpt(EpicsSignal, "_UWPEN_STS")
+    uwpen_desc = Cpt(EpicsSignal, "_UWPEN_STS.DESC")
+    uwsen = Cpt(EpicsSignal, "_UWSEN_STS")
+    uwsen_desc = Cpt(EpicsSignal, "_UWSEN_STS.DESC")
+    errtg = Cpt(EpicsSignal, "_ERRTG_STS")
+    errtg_desc = Cpt(EpicsSignal, "_ERRTG_STS.DESC")
+    swpoc = Cpt(EpicsSignal, "_SWPOC_STS")
+    swpoc_desc = Cpt(EpicsSignal, "_SWPOC_STS.DESC")
+    asscs = Cpt(EpicsSignal, "_ASSCS_STS")
+    asscs_desc = Cpt(EpicsSignal, "_ASSCS_STS.DESC")
+    frpos = Cpt(EpicsSignal, "_FRPOS_STS")
+    frpos_desc = Cpt(EpicsSignal, "_FRPOS_STS.DESC")
+    hsrch = Cpt(EpicsSignal, "_HSRCH_STS")
+    hsrch_desc = Cpt(EpicsSignal, "_HSRCH_STS.DESC")
+    sodpl = Cpt(EpicsSignal, "_SODPL_STS")
+    sodpl_desc = Cpt(EpicsSignal, "_SODPL_STS.DESC")
+    sopl = Cpt(EpicsSignal, "_SOPL_STS")
+    sopl_desc = Cpt(EpicsSignal, "_SOPL_STS.DESC")
+    hocpl = Cpt(EpicsSignal, "_HOCPL_STS")
+    hocpl_desc = Cpt(EpicsSignal, "_HOCPL_STS.DESC")
+    phsra = Cpt(EpicsSignal, "_PHSRA_STS")
+    phsra_desc = Cpt(EpicsSignal, "_PHSRA_STS.DESC")
+    prefe = Cpt(EpicsSignal, "_PREFE_STS")
+    prefe_desc = Cpt(EpicsSignal, "_PREFE_STS.DESC")
+    trmov = Cpt(EpicsSignal, "_TRMOV_STS")
+    trmov_desc = Cpt(EpicsSignal, "_TRMOV_STS.DESC")
+    iffe = Cpt(EpicsSignal, "_IFFE_STS")
+    iffe_desc = Cpt(EpicsSignal, "_IFFE_STS.DESC")
+    amfae = Cpt(EpicsSignal, "_AMFAE_STS")
+    amfae_desc = Cpt(EpicsSignal, "_AMFAE_STS.2ESC")
+    amfe = Cpt(EpicsSignal, "_AMFE_STS")
+    amfe_desc = Cpt(EpicsSignal, "_AMFE_STS.DESC")
+    fafoe = Cpt(EpicsSignal, "_FAFOE_STS")
+    fafoe_desc = Cpt(EpicsSignal, "_FAFOE_STS.DESC")
+    wfoer = Cpt(EpicsSignal, "_WFOER_STS")
+    wfoer_desc = Cpt(EpicsSignal, "_WFOER_STS.DESC")
+    inpos = Cpt(EpicsSignal, "_INPOS_STS")
+    inpos_desc = Cpt(EpicsSignal, "_INPOS_STS.DESC")
+    enc_lss = Cpt(EpicsSignal, "_ENC_LSS_STS")
+    enc_lss_desc = Cpt(EpicsSignal, "_ENC_LSS_STS.DESC")
+
+    def home(self, *args, **kwargs):
+        yield from bps.mv(self.home_cmd, 1)
+
+    def clear_encoder_loss(self):
+        yield from bps.mv(self.clr_enc_lss, 1)
+
+    def status(self):
+        text = "\n  EPICS PV base : %s\n\n" % (self.prefix)
+        for signal in self.status_list:
+            if signal.upper() not in self.status_list:
+                continue
+            suffix = getattr(self, signal).pvname.replace(self.prefix, "")
+            if getattr(self, signal).get():
+                value_color = "lightgreen"
+            else:
+                value_color = "lightred"
+
+            text += "  %-26s : %-35s  %s   %s \n" % (
+                getattr(self, signal + "_desc").get(),
+                colored(
+                    getattr(self, signal).enum_strs[getattr(self, signal).get()],
+                    value_color,
+                ),
+                colored(getattr(self, signal).get(), value_color),
+                whisper(suffix),
+            )
+        boxed_text("%s status signals" % self.name, text, "green", shrink=True)
+
+
+class prettymotor(EpicsMotor):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.read_attrs = ["user_readback", "user_setpoint"]
 
-    @pseudo_position_argument
-    def forward(self, pp):
-        rx, ry, rz, rr = self.bar.frame_to_beam(pp.sx, pp.sy, pp.sz, pp.sr)
-        return self.RealPosition(x=rx, y=ry, z=rz, r=rr)
+    def where(self):
+        return ("{} : {}").format(
+            colored(self.name, "lightblue"),
+            colored(
+                "{:.2f}".format(self.user_readback.get()).rstrip("0."),
+                "yellow",
+            ),
+        )
 
-    @real_position_argument
-    def inverse(self, rp):
-        sx, sy, sz, sr = self.bar.beam_to_frame(rp.x, rp.y, rp.z, rp.r)
-        return self.PseudoPosition(sx=sx, sy=sy, sz=sz, sr=sr)
+    def where_sp(self):
+        return ("{} Setpoint : {}\n{} Readback : {}").format(
+            colored(self.name, "lightblue"),
+            colored(
+                "{:.2f}".format(self.user_readback.get()).rstrip("0."),
+                "yellow",
+            ),
+            colored(self.name, "lightblue"),
+            colored(
+                "{:.2f}".format(self.user_setpoint.get()).rstrip("0."),
+                "yellow",
+            ),
+        )
 
-    def to_pseudo_tuple(self, *args, **kwargs):
-        return _to_position_tuple(self.PseudoPosition, *args, **kwargs,
-                                  _cur=lambda: self.position)
+    def wh(self):
+        boxed_text(self.name + " location", self.where_sp(), "green",
+                   shrink=True)
 
-    def distance_to_beam(self):
-        x, y, z, r = self.real_position
-        return self.bar.distance_to_beam(x, y, z, r)
 
-    def sample_distance_to_beam(self):
-        x, y, z, r = self.real_position
-        return self.bar.sample_distance_to_beam(x, y, z, r)
-
-# samplex, sampley, samplez, sampler
-# sx, sy, sz, sr shortcuts?
-# pseudo -> pseudox, pseudoy, pseudoz, pseudor ? makes clear what's what??
-# pseudo -> px, py, pz, pr shortcuts?
-# set_side
-# set_sample (automatically sets side)
-# yield from set_sample
-# def set_sample(sample_id):
-#    yield from abs_set(bar.sample, sample_id)
-
+class FMBOprettymotor(FMBOEpicsMotor, prettymotor):
+    pass
