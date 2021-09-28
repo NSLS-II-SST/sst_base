@@ -8,7 +8,7 @@ setup(
     author_email=None,
     description="Beamline hardware classes",
     install_requires=requirements,
-    name="beamline_base",
+    name="bl_base",
     use_scm_version=True,
     packages=find_packages()
 )
