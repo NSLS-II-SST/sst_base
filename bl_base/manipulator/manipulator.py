@@ -1,5 +1,3 @@
-from ophyd.sim import SynAxis
-from ophyd.positioner import SoftPositioner
 from ophyd import PseudoPositioner, PseudoSingle
 from ophyd import Component as Cpt
 from ophyd.pseudopos import (pseudo_position_argument, real_position_argument,
@@ -38,14 +36,3 @@ class ManipulatorBase(PseudoPositioner):
     def sample_distance_to_beam(self):
         x, y, z, r = self.real_position
         return self.bar.sample_distance_to_beam(x, y, z, r)
-
-# samplex, sampley, samplez, sampler
-# sx, sy, sz, sr shortcuts?
-# pseudo -> pseudox, pseudoy, pseudoz, pseudor ? makes clear what's what??
-# pseudo -> px, py, pz, pr shortcuts?
-# set_side
-# set_sample (automatically sets side)
-# yield from set_sample
-# def set_sample(sample_id):
-#    yield from abs_set(bar.sample, sample_id)
-
