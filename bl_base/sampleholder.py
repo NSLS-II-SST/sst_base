@@ -1,7 +1,7 @@
 import numpy as np
 from ophyd import Device, Signal, Component as Cpt
-from .frames import Panel, Frame
-from .linalg import vec, deg_to_rad, rad_to_deg
+from bl_funcs.geometry.frames import Panel, Frame
+from bl_funcs.geometry.linalg import vec, deg_to_rad
 
 
 class Sample(Device):
