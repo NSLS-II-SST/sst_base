@@ -3,10 +3,39 @@ from ophyd import Device, Component as Cpt, EpicsSignal, Signal, EpicsSignalRO
 
 class I400(Device):
     exposure_time = Cpt(EpicsSignal, ":PERIOD_MON", write_pv=":PERIOD_SP", kind="config")
-    set_range = Cpt(EpicsSignal, ":RANGE_BP")
+    range_set = Cpt(EpicsSignal, ":RANGE_BP", kind="omitted")
     range_mon = Cpt(EpicsSignalRO, ":RANGE_MON", kind="config")
-    cap_bin = Cpt(EpicsSignal, ":CAP_SP", kind="config")
+    period_mon = Cpt(EpicsSignalRO, ":PERIOD_MON", kind="config")
+    period_set = Cpt(EpicsSignal, ":PERIOD_SP", kind="config")
+    cap_bin = Cpt(EpicsSignal, ":CAP_STS", write_pv=":CAP_SP", kind="config")
     err = Cpt(EpicsSignalRO, ":ERR")
     sts = Cpt(EpicsSignalRO, ":STS")
-    clrerr = Cpt(EpicsSignal, ":EXECUTE_CLEAR")
+    clrerr = Cpt(EpicsSignal, ":EXECUTE_CLEAR.PROC", kind="omitted")
     i1 = Cpt(EpicsSignalRO, ":I1_MON")
+    acquire = Cpt(EpicsSignal, ":I1_MON.PROC", kind="omitted")
+
+    def clear_errors(self):
+        self.clrerr.set(1)
+
+    def set_range(self, range_exp):
+        """
+        range_exp : int
+            Exponent of desired range, expressed as a positive integer. I.e, for 1e-7 A range,
+            enter 7
+        """
+        ioc_range = int(13 - range_exp)
+        min_range = "1e-9" if self.cap_bin.get() else "1e-11"
+        if ioc_range <= 1:
+            raise ValueError(f"1e-{range_exp%d} current range too low, minimum is {min_range}")
+        else:
+            self.range_set.set(ioc_range)
+
+    def trigger(self):
+        def check_done(*, old_value, value, **kwargs):
+            return (old_value == 1 and value == 0)
+        status = SubscriptionStatus(self.acquire, check_done)
+        self.acquire.set(1)
+        return status
+
+        
+    
