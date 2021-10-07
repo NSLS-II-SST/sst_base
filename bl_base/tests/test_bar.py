@@ -1,7 +1,7 @@
 import pytest
 
-from sst_base.sample_bar import SampleHolder
-from sst_base.linalg import vec
+from bl_base.sampleholder import SampleHolder
+from bl_funcs.geometry.linalg import vec
 import numpy as np
 
 
