@@ -1,7 +1,7 @@
 from ophyd import EpicsMotor, EpicsSignal
 from ophyd import Component as Cpt
 import bluesky.plan_stubs as bps
-from beamline_base.printing import boxed_text, colored, whisper
+from bl_funcs.printing import boxed_text, colored, whisper
 
 
 class FMBOEpicsMotor(EpicsMotor):
@@ -175,5 +175,5 @@ class prettymotor(EpicsMotor):
                    shrink=True)
 
 
-class FMBOprettymotor(FMBOEpicsMotor, prettymotor):
+class PrettyMotorFMBO(FMBOEpicsMotor, prettymotor):
     pass
