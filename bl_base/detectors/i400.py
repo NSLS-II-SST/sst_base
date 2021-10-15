@@ -19,6 +19,7 @@ class I400(Device):
     i3 = Cpt(EpicsSignalRO, ":I3_MON")
     i4 = Cpt(EpicsSignalRO, ":I4_MON")
     acquire = Cpt(EpicsSignal, ":COUNT_TRIGGERS", kind="omitted")
+    acquire_mode = Cpt(EpicsSignal, ":IC_UPDATE_MODE", kind="omitted")
     accum_mon = Cpt(EpicsSignalRO, ":ACCUM_MON", kind="config")
     accum_sp = Cpt(EpicsSignal, ":ACCUM_SP", kind="omitted")
     
@@ -47,11 +48,19 @@ class I400(Device):
         npoints = int(exp_time/int_time)
         self.points.set(f"{npoints:d}")
         self.exposure_time.set(f"{npoints*int_time}")
-        
+
+    def set_average_mode(self, average_mode):
+        """
+        accum_mode : 
+            0: No averaging
+            1: Average with charge interpolation
+            2: Average with no-lost-charge method
+            3: Average with no charge correction
+        """
+        self.accum_mode.set(average_mode)
+
     def trigger(self):
         status = SubscriptionStatus(self.i1, lambda *arg, **kwargs: True, run=False)
         self.acquire.set(1)
         return status
 
-        
-    
