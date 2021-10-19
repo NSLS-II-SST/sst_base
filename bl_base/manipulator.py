@@ -4,8 +4,20 @@ from ophyd.pseudopos import (pseudo_position_argument, real_position_argument,
                              _to_position_tuple)
 
 
-class ManipulatorBase(PseudoPositioner):
+class Manipulator1AxBase():
+    # Really need a discrete manipulator that can be set to
+    # one of several sample positions. May just be a sampleholder
+    # Good argument for having sampleholder contain the motors, not
+    # the other way around...?
+    pass
+
+
+class Manipulator4AxBase(PseudoPositioner):
     # Find some way to record all motors that moved!
+    # Radical thought: Decouple Manipulator4AxBase from bar.
+    # Manipulator just has a "frame" that can be set arbitrarily
+    # Functions not attached to any class are defined that take
+    # both Manipulator and SampleHolder and move samples. 
     sx = Cpt(PseudoSingle)
     sy = Cpt(PseudoSingle)
     sz = Cpt(PseudoSingle)
