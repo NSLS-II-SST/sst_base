@@ -18,9 +18,6 @@ class Sample(Device):
         self.side.set(md['side'])
         self.origin.set(md['origin'])
 
-
-class SampleHolder1d(Device):
-    pass
         
 class SampleHolder(Device):
     sample = Cpt(Sample, kind='config')
