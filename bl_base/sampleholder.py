@@ -30,6 +30,7 @@ class SampleHolderBase(Device):
         self.sample_frames = {}
         self.sample_md = {}
         self.set("null")
+        self.geometry = None
         self._has_geometry = False
 
     @property
@@ -75,8 +76,10 @@ class SampleHolderBase(Device):
     def get_sample_pos(*args, **kwargs):
         pass
     
+
+class SampleHolder(SampleHolderBase):
     
-class SampleHolder(Device):
+class SampleHolderOld(Device):
     sample = Cpt(Sample, kind='config')
 
     def __init__(self, *args, **kwargs):
