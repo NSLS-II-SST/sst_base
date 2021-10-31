@@ -18,7 +18,64 @@ class Sample(Device):
         self.side.set(md['side'])
         self.origin.set(md['origin'])
 
-        
+
+class SampleHolderBase(Device):
+    sample = Cpt(Sample, kind='config')
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._reset()
+
+    def _reset(self):
+        self.sample_frames = {}
+        self.sample_md = {}
+        self.set("null")
+        self._has_geometry = False
+
+    @property
+    def samples(self):
+        return list(self.sample_frames.keys())
+
+    @property
+    def current_frame(self):
+        return self.sample_frames[self.sample.sample_id.get()]
+
+    def set(self, sample_id, **kwargs):
+        _md = self.sample_md[sample_id]
+        md = {}
+        md.update(_md)
+        md.update(kwargs)
+        self.sample.set(md)
+
+    def add_sample(self, sample_id, name, position, side, t=0, desc=""):
+        """
+        sample_id: Unique sample identifier
+        position: x1, y1, x2, y2 tuple
+        side: side number (starting from 1)
+        """
+        if not self._has_geometry:
+            raise RuntimeError("Bar has no geometry loaded. "
+                               "Call load_geometry first")
+        if side > len(self.sides):
+            raise ValueError(f"Side {side} too large, bar only has"
+                             " {len(self.sides)} sides!")
+
+        x1, y1, x2, y2 = position
+        p1 = vec(x1, y1, t)
+        p2 = vec(x1, y2, t)
+        p3 = vec(x2, y1, t)
+        width = x2 - x1
+        height = y2 - y1
+
+        frame = Panel(p1, p2, p3, height=height, width=width,
+                      parent=self.sides[side - 1])
+        self.add_frame(frame, sample_id, name, side, desc)
+        return frame
+
+    def get_sample_pos(*args, **kwargs):
+        pass
+    
+    
 class SampleHolder(Device):
     sample = Cpt(Sample, kind='config')
 
@@ -114,20 +171,6 @@ class SampleHolder(Device):
                       parent=self.sides[side - 1])
         self.add_frame(frame, sample_id, name, side, desc)
         return frame
-
-    @property
-    def samples(self):
-        return list(self.sample_frames.keys())
-
-    @property
-    def current_frame(self):
-        return self.sample_frames[self.sample.sample_id.get()]
-
-    def set(self, sample_id, origin="edge"):
-        _md = self.sample_md[sample_id]
-        md = {"origin": origin}
-        md.update(_md)
-        self.sample.set(md)
 
     def set_frame_sample_edge(self, sample_id):
         self.set(sample_id, "edge")
