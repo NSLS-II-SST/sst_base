@@ -48,6 +48,16 @@ class SampleHolderBase(Device):
         md.update(kwargs)
         self.sample.set(md)
 
+
+    def add_geometry(self, geometry):
+        """
+        geometry : List of sides
+        """
+        self.sides = geometry
+        for n, side in enumerate(geometry):
+            sample_id = f"side{n + 1}"
+        self.add_frame(side, sample_id, sample_id, side_num)
+    
     def add_sample(self, sample_id, name, position, side, t=0, desc=""):
         """
         sample_id: Unique sample identifier
