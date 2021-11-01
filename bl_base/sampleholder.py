@@ -16,10 +16,89 @@ class Sample(Device):
         self.sample_id.set(md['sample_id'])
         self.sample_desc.set(md['sample_desc'])
         self.side.set(md['side'])
-        self.origin.set(md['origin'])
+        if md.get('origin', None) is None:
+            self.origin.kind = "omitted"
+        else:
+            self.origin.set(md['origin'])
+            self.origin.kind = 'normal'
+        
+        
+def make_sample_frame(position, parent, t=0):
+    if len(position) == 4:
+        x1, y1, x2, y2 = position
+        p1 = vec(x1, y1, t)
+        p2 = vec(x1, y2, t)
+        p3 = vec(x2, y1, t)
+        width = x2 - x1
+        height = y2 - y1
 
+        frame = Panel(p1, p2, p3, height=height, width=width,
+                      parent=parent)
+        return frame
 
-class SampleHolderBase(Device):
+def make_1d(length):
+    pass
+
+def manip_frame():
+    p1 = vec(0, 0, -531)
+    p2 = p1 + vec(0, 1, 0)
+    p3 = p1 + vec(1, 0, 0)
+    return Frame(p1, p2, p3)
+
+def make_two_sided_bar(width, height, thickness=0):
+    geometry = []
+    manip = manip_frame()
+    y = -width/2.0
+    x = thickness/2.0
+    z = height
+    p1 = vec(x, y, z)
+    p2 = p1 + vec(0, 0, -1)
+    p3 = p1 + vec(0, 1, 0)
+    side1 = Panel(p1, p2, p3, width=width, height=height, parent=manip)
+
+    y = width/2.0
+    x = -thickness/2.0
+    z = height
+    p1 = vec(x, y, z)
+    p2 = p1 + vec(0, 0, -1)
+    p3 = p1 + vec(0, 1, 0)
+    
+    side2 = Panel(p1, p2, p3, width=width, height=height, parent=manip)
+
+    return [side1, side2]
+
+def make_regular_polygon(width, height, nsides, points=None):
+    geometry = []
+    interior_angle = 360.0/nsides
+    if points is None:
+        y = -width/2.0
+        x = width/(2.0*np.tan(interior_angle/2.0))
+        z = height
+        p1 = vec(x, y, z)
+        p2 = p1 + vec(0, 0, 1)
+        p3 = p1 + vec(0, 1, 0)
+    else:
+        p1, p2, p3 = points
+
+    def _newSideFromSide(side):
+        prev_edges = side.real_edges(vec(0, 0, 0), 0)
+        new_vector = vec(np.cos(np.pi - deg_to_rad(interior_angle)), 0,
+                     -np.sin(np.pi - deg_to_rad(interior_angle)))
+        p1 = prev_edges[1]
+        p2 = prev_edges[2]
+        p3 = side.frame_to_global(new_vector + side.edges[1], r=0,
+                                  rotation="global")
+        return Panel(p1, p2, p3, width=width, height=height)
+
+    current_side = Panel(p1, p2, p3, width=width, height=height)
+    geometry.append(current_side)
+    for n in range(1, nsides):
+        new_side = _newSideFromSide(current_side)
+        geometry.append(new_side)
+        current_side = new_side
+    return geometry
+
+class SampleHolder(Device):
     sample = Cpt(Sample, kind='config')
     
     def __init__(self, *args, **kwargs):
@@ -27,10 +106,12 @@ class SampleHolderBase(Device):
         self._reset()
 
     def _reset(self):
+        self.sides = []
         self.sample_frames = {}
         self.sample_md = {}
+        null_frame = Frame(vec(0, 0, 0), vec(0, 0, 1), vec(0, 1, 0))
+        self._add_frame(null_frame, "null", "null", -1)
         self.set("null")
-        self.geometry = None
         self._has_geometry = False
 
     @property
@@ -48,16 +129,27 @@ class SampleHolderBase(Device):
         md.update(kwargs)
         self.sample.set(md)
 
+    def _add_frame(self, frame, sample_id, name, side=-1, desc="",
+                  origin='edge'):
+        md = {"sample_id": sample_id,
+              "sample_name": name,
+              "side": side,
+              "sample_desc": desc}
+        self.sample_frames[sample_id] = frame
+        self.sample_md[sample_id] = md
 
     def add_geometry(self, geometry):
         """
         geometry : List of sides
         """
+        self._reset()
         self.sides = geometry
         for n, side in enumerate(geometry):
-            sample_id = f"side{n + 1}"
-        self.add_frame(side, sample_id, sample_id, side_num)
-    
+            side_num = n + 1
+            sample_id = f"side{side_num}"
+            self._add_frame(side, sample_id, sample_id, side_num)
+        self._has_geometry = True
+        
     def add_sample(self, sample_id, name, position, side, t=0, desc=""):
         """
         sample_id: Unique sample identifier
@@ -70,24 +162,34 @@ class SampleHolderBase(Device):
         if side > len(self.sides):
             raise ValueError(f"Side {side} too large, bar only has"
                              " {len(self.sides)} sides!")
+        frame = make_sample_frame(position, parent=self.sides[side -1])
+        self._add_frame(frame, sample_id, name, side, desc)
 
-        x1, y1, x2, y2 = position
-        p1 = vec(x1, y1, t)
-        p2 = vec(x1, y2, t)
-        p3 = vec(x2, y1, t)
-        width = x2 - x1
-        height = y2 - y1
+    def frame_to_beam(self, *args, **kwargs):
+        return self.current_frame.frame_to_beam(*args, **kwargs)
 
-        frame = Panel(p1, p2, p3, height=height, width=width,
-                      parent=self.sides[side - 1])
-        self.add_frame(frame, sample_id, name, side, desc)
-        return frame
+    def beam_to_frame(self, *args, **kwargs):
+        return self.current_frame.beam_to_frame(*args, **kwargs)
 
-    def get_sample_pos(*args, **kwargs):
-        pass
-    
+    def distance_to_beam(self, *args, **kwargs):
+        if self._has_geometry:
+            distances = [side.distance_to_beam(*args)
+                         for side in self.sides]
+            return np.min(distances)
+        else:
+            distance = self.current_frame.distance_to_beam(*args)
+            return distance
 
-class SampleHolder(SampleHolderBase):
+    def sample_distance_to_beam(self, *args):
+        return self.current_frame.distance_to_beam(*args)
+
+    def check_value(self, val):
+        if val is None:
+            # None needs to be allowed so that sample cpt can be instantiated
+            # before sample list is populated
+            return
+        elif val not in self.samples:
+            raise ValueError(f"{val} not in sample keys")
     
 class SampleHolderOld(Device):
     sample = Cpt(Sample, kind='config')
