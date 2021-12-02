@@ -1,6 +1,6 @@
 from ophyd import EpicsMotor, PseudoPositioner, PseudoSingle, Component as Cpt
 from ophyd.pseudopos import pseudo_position_argument, real_position_argument
-from beamline_base.printing import boxed_text
+from bl_funcs.printing import boxed_text
 
 
 class Slits(PseudoPositioner):

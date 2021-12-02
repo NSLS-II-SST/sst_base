@@ -1,5 +1,6 @@
 import numpy as np
 from ophyd import Device, Signal, Component as Cpt
+from ophyd.status import StatusBase
 from bl_funcs.geometry.frames import Panel, Frame
 from bl_funcs.geometry.linalg import vec, deg_to_rad
 
@@ -21,8 +22,10 @@ class Sample(Device):
         else:
             self.origin.set(md['origin'])
             self.origin.kind = 'normal'
-        
-        
+        status = StatusBase()
+        status.set_finished()
+        return status
+
 def make_sample_frame(position, parent, t=0):
     if len(position) == 4:
         x1, y1, x2, y2 = position
@@ -36,8 +39,10 @@ def make_sample_frame(position, parent, t=0):
                       parent=parent)
         return frame
 
+
 def make_1d(length):
     pass
+
 
 def manip_frame():
     p1 = vec(0, 0, -531)
@@ -45,16 +50,15 @@ def manip_frame():
     p3 = p1 + vec(1, 0, 0)
     return Frame(p1, p2, p3)
 
-def make_two_sided_bar(width, height, thickness=0):
-    geometry = []
-    manip = manip_frame()
+
+def make_two_sided_bar(width, height, thickness=0, parent=manip_frame()):
     y = -width/2.0
     x = thickness/2.0
     z = height
     p1 = vec(x, y, z)
     p2 = p1 + vec(0, 0, -1)
     p3 = p1 + vec(0, 1, 0)
-    side1 = Panel(p1, p2, p3, width=width, height=height, parent=manip)
+    side1 = Panel(p1, p2, p3, width=width, height=height, parent=parent)
 
     y = width/2.0
     x = -thickness/2.0
@@ -62,12 +66,13 @@ def make_two_sided_bar(width, height, thickness=0):
     p1 = vec(x, y, z)
     p2 = p1 + vec(0, 0, -1)
     p3 = p1 + vec(0, 1, 0)
-    
-    side2 = Panel(p1, p2, p3, width=width, height=height, parent=manip)
+
+    side2 = Panel(p1, p2, p3, width=width, height=height, parent=parent)
 
     return [side1, side2]
 
-def make_regular_polygon(width, height, nsides, points=None):
+
+def make_regular_polygon(width, height, nsides, points=None, parent=manip_frame()):
     geometry = []
     interior_angle = 360.0/nsides
     if points is None:
@@ -88,9 +93,9 @@ def make_regular_polygon(width, height, nsides, points=None):
         p2 = prev_edges[2]
         p3 = side.frame_to_global(new_vector + side.edges[1], r=0,
                                   rotation="global")
-        return Panel(p1, p2, p3, width=width, height=height)
+        return Panel(p1, p2, p3, width=width, height=height, parent=parent)
 
-    current_side = Panel(p1, p2, p3, width=width, height=height)
+    current_side = Panel(p1, p2, p3, width=width, height=height, parent=parent)
     geometry.append(current_side)
     for n in range(1, nsides):
         new_side = _newSideFromSide(current_side)
@@ -98,9 +103,10 @@ def make_regular_polygon(width, height, nsides, points=None):
         current_side = new_side
     return geometry
 
+
 class SampleHolder(Device):
     sample = Cpt(Sample, kind='config')
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._reset()
@@ -127,10 +133,10 @@ class SampleHolder(Device):
         md = {}
         md.update(_md)
         md.update(kwargs)
-        self.sample.set(md)
+        return self.sample.set(md)
 
     def _add_frame(self, frame, sample_id, name, side=-1, desc="",
-                  origin='edge'):
+                   origin='edge'):
         md = {"sample_id": sample_id,
               "sample_name": name,
               "side": side,
@@ -149,7 +155,7 @@ class SampleHolder(Device):
             sample_id = f"side{side_num}"
             self._add_frame(side, sample_id, sample_id, side_num)
         self._has_geometry = True
-        
+
     def add_sample(self, sample_id, name, position, side, t=0, desc=""):
         """
         sample_id: Unique sample identifier
@@ -166,10 +172,14 @@ class SampleHolder(Device):
         self._add_frame(frame, sample_id, name, side, desc)
 
     def frame_to_beam(self, *args, **kwargs):
-        return self.current_frame.frame_to_beam(*args, **kwargs)
+        md = {'origin': self.sample.origin.get()}
+        md.update(kwargs)
+        return self.current_frame.frame_to_beam(*args, **md)
 
     def beam_to_frame(self, *args, **kwargs):
-        return self.current_frame.beam_to_frame(*args, **kwargs)
+        md = {'origin': self.sample.origin.get()}
+        md.update(kwargs)
+        return self.current_frame.beam_to_frame(*args, **md)
 
     def distance_to_beam(self, *args, **kwargs):
         if self._has_geometry:
@@ -190,7 +200,13 @@ class SampleHolder(Device):
             return
         elif val not in self.samples:
             raise ValueError(f"{val} not in sample keys")
-    
+
+
+dummy_holder = SampleHolder(name="dummy_holder")
+dummy_geometry = make_regular_polygon(1, 1, 4, parent=manip_frame())
+dummy_holder.add_geometry(dummy_geometry)
+
+
 class SampleHolderOld(Device):
     sample = Cpt(Sample, kind='config')
 
