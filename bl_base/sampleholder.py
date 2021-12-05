@@ -26,6 +26,7 @@ class Sample(Device):
         status.set_finished()
         return status
 
+
 def make_sample_frame(position, parent, t=0):
     if len(position) == 4:
         x1, y1, x2, y2 = position
@@ -44,14 +45,7 @@ def make_1d(length):
     pass
 
 
-def manip_frame():
-    p1 = vec(0, 0, -531)
-    p2 = p1 + vec(0, 1, 0)
-    p3 = p1 + vec(1, 0, 0)
-    return Frame(p1, p2, p3)
-
-
-def make_two_sided_bar(width, height, thickness=0, parent=manip_frame()):
+def make_two_sided_bar(width, height, thickness=0, parent=None):
     y = -width/2.0
     x = thickness/2.0
     z = height
@@ -72,7 +66,8 @@ def make_two_sided_bar(width, height, thickness=0, parent=manip_frame()):
     return [side1, side2]
 
 
-def make_regular_polygon(width, height, nsides, points=None, parent=manip_frame()):
+def make_regular_polygon(width, height, nsides, points=None,
+                         parent=None):
     geometry = []
     interior_angle = 360.0/nsides
     if points is None:
@@ -88,19 +83,24 @@ def make_regular_polygon(width, height, nsides, points=None, parent=manip_frame(
     def _newSideFromSide(side):
         prev_edges = side.real_edges(vec(0, 0, 0), 0)
         new_vector = vec(np.cos(np.pi - deg_to_rad(interior_angle)), 0,
-                     -np.sin(np.pi - deg_to_rad(interior_angle)))
+                         -np.sin(np.pi - deg_to_rad(interior_angle)))
         p1 = prev_edges[1]
         p2 = prev_edges[2]
         p3 = side.frame_to_global(new_vector + side.edges[1], r=0,
                                   rotation="global")
         return Panel(p1, p2, p3, width=width, height=height, parent=parent)
 
-    current_side = Panel(p1, p2, p3, width=width, height=height, parent=parent)
+    current_side = Panel(p1, p2, p3, width=width, height=height,
+                         parent=parent)
     geometry.append(current_side)
+    new_sides = []
     for n in range(1, nsides):
         new_side = _newSideFromSide(current_side)
-        geometry.append(new_side)
+        new_sides.append(new_side)
         current_side = new_side
+    # It is unfortunately easier to generate sides in reverse order
+    # due to the coordinate system, so we must reverse them.
+    geometry += new_sides[::-1]
     return geometry
 
 
@@ -127,6 +127,9 @@ class SampleHolder(Device):
     @property
     def current_frame(self):
         return self.sample_frames[self.sample.sample_id.get()]
+
+    def update_side(self, side_num, p1, p2, p3):
+        self.sides[0].update_basis(p1, p2, p3)
 
     def set(self, sample_id, **kwargs):
         _md = self.sample_md[sample_id]
@@ -156,6 +159,10 @@ class SampleHolder(Device):
             self._add_frame(side, sample_id, sample_id, side_num)
         self._has_geometry = True
 
+    def add_parent_frame(self, frame):
+        for s in self.sides:
+            s.add_parent_frame(frame)
+
     def add_sample(self, sample_id, name, position, side, t=0, desc=""):
         """
         sample_id: Unique sample identifier
@@ -168,7 +175,7 @@ class SampleHolder(Device):
         if side > len(self.sides):
             raise ValueError(f"Side {side} too large, bar only has"
                              " {len(self.sides)} sides!")
-        frame = make_sample_frame(position, parent=self.sides[side -1])
+        frame = make_sample_frame(position, parent=self.sides[side - 1])
         self._add_frame(frame, sample_id, name, side, desc)
 
     def frame_to_beam(self, *args, **kwargs):
@@ -203,7 +210,7 @@ class SampleHolder(Device):
 
 
 dummy_holder = SampleHolder(name="dummy_holder")
-dummy_geometry = make_regular_polygon(1, 1, 4, parent=manip_frame())
+dummy_geometry = make_regular_polygon(1, 1, 4)
 dummy_holder.add_geometry(dummy_geometry)
 
 
