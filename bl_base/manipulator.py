@@ -26,7 +26,7 @@ class Manipulator4AxBase(PseudoPositioner):
     sz = Cpt(PseudoSingle)
     sr = Cpt(PseudoSingle)
 
-    def __init__(self, holder, origin=vec(0, 0, 0), frame=None, *args, **kwargs):
+    def __init__(self, holder, *args, origin=vec(0, 0, 0), **kwargs):
         """
         Frame takes care of translating manipulator coordinates
         to beam coordinates. Should be just an offset, equal to
