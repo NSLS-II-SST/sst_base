@@ -3,7 +3,8 @@ from ophyd.status import SubscriptionStatus
 from ophyd.signal import DEFAULT_EPICSSIGNAL_VALUE
 
 class I400(Device):
-    exposure_time = Cpt(Signal, name="exposure_time", kind="config")
+    exposure_sp = Cpt(Signal, name="exposure_time", kind="config")
+    exposure = Cpt(EpicsSignalRO, ":ITIME_MON")
     range_sp = Cpt(EpicsSignal, ":RANGE", kind="omitted")
     range_set = Cpt(EpicsSignal, ":SET_RANGE.PROC", kind="omitted")
     range_mon = Cpt(EpicsSignalRO, ":RANGE_MON", kind="config")
