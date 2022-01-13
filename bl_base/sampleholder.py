@@ -129,7 +129,7 @@ class SampleHolder(Device):
         return self.sample_frames[self.sample.sample_id.get()]
 
     def update_side(self, side_num, p1, p2, p3):
-        self.sides[0].update_basis(p1, p2, p3)
+        self.sides[side_num].update_basis(p1, p2, p3)
 
     def set(self, sample_id, **kwargs):
         _md = self.sample_md[sample_id]
