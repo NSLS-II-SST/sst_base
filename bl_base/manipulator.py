@@ -5,6 +5,7 @@ from ophyd.pseudopos import (pseudo_position_argument, real_position_argument,
 from bl_base.sampleholder import dummy_holder
 from bl_funcs.geometry.linalg import vec
 
+
 class Manipulator1AxBase():
     # Really need a discrete manipulator that can be set to
     # one of several sample positions. May just be a sampleholder
@@ -32,7 +33,7 @@ class Manipulator4AxBase(PseudoPositioner):
         to beam coordinates. Should be just an offset, equal to
         -1*beam origin.
         """
-        #self.frame = frame
+
         self.origin = origin
         if holder is None:
             self.holder = dummy_holder

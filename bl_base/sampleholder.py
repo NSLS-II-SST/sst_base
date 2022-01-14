@@ -74,6 +74,7 @@ def make_regular_polygon(width, height, nsides, points=None,
         az = -1
     else:
         az = 1
+
     if points is None:
         y = -1*az*width/2.0
         x = width/(2.0*np.tan(interior_angle/2.0))
