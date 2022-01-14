@@ -67,23 +67,30 @@ def make_two_sided_bar(width, height, thickness=0, parent=None):
 
 
 def make_regular_polygon(width, height, nsides, points=None,
-                         parent=None):
+                         parent=None, invert=True):
     geometry = []
-    interior_angle = 360.0/nsides
+    interior_angle = deg_to_rad(360.0/nsides)
+    if invert:
+        az = -1
+    else:
+        az = 1
     if points is None:
-        y = -width/2.0
+        y = -1*az*width/2.0
         x = width/(2.0*np.tan(interior_angle/2.0))
-        z = height
+        if invert:
+            z = height
+        else:
+            z = 0
         p1 = vec(x, y, z)
-        p2 = p1 + vec(0, 0, 1)
-        p3 = p1 + vec(0, 1, 0)
+        p2 = p1 + vec(0, 0, az)
+        p3 = p1 + vec(0, az, 0)
     else:
         p1, p2, p3 = points
 
     def _newSideFromSide(side):
         prev_edges = side.real_edges(vec(0, 0, 0), 0)
-        new_vector = vec(np.cos(np.pi - deg_to_rad(interior_angle)), 0,
-                         -np.sin(np.pi - deg_to_rad(interior_angle)))
+        new_vector = vec(np.cos(np.pi - interior_angle), 0,
+                         -np.sin(np.pi - interior_angle))
         p1 = prev_edges[1]
         p2 = prev_edges[2]
         p3 = side.frame_to_global(new_vector + side.edges[1], r=0,
