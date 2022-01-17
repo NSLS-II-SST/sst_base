@@ -8,6 +8,6 @@ setup(
     author_email=None,
     description="Beamline hardware classes",
     install_requires=requirements,
-    name="bl_base",
+    name="sst_base",
     packages=find_packages()
 )

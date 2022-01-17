@@ -1,4 +1,4 @@
 bluesky
 ophyd
 numpy
-bl_funcs
+sst_funcs

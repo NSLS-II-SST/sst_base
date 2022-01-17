@@ -2,8 +2,8 @@ from ophyd import PseudoPositioner, PseudoSingle, Device
 from ophyd import Component as Cpt
 from ophyd.pseudopos import (pseudo_position_argument, real_position_argument,
                              _to_position_tuple)
-from bl_base.sampleholder import dummy_holder
-from bl_funcs.geometry.linalg import vec
+from .sampleholder import dummy_holder
+from sst_funcs.geometry.linalg import vec
 
 
 class ManipulatorBase(PseudoPositioner):

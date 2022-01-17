@@ -1,8 +1,8 @@
 import numpy as np
 from ophyd import Device, Signal, Component as Cpt
 from ophyd.status import StatusBase
-from bl_funcs.geometry.frames import Panel, Frame, Interval, NullFrame
-from bl_funcs.geometry.linalg import vec, deg_to_rad
+from sst_funcs.geometry.frames import Panel, Frame, Interval, NullFrame
+from sst_funcs.geometry.linalg import vec, deg_to_rad
 
 
 class Sample(Device):
