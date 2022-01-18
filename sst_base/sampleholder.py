@@ -1,7 +1,7 @@
 import numpy as np
 from ophyd import Device, Signal, Component as Cpt
 from ophyd.status import StatusBase
-from sst_funcs.geometry.frames import Panel, Frame, Interval, NullFrame
+from sst_funcs.geometry.frames import Panel, Interval, NullFrame
 from sst_funcs.geometry.linalg import vec, deg_to_rad
 
 
@@ -99,11 +99,23 @@ def make_regular_polygon(width, height, nsides, points=None,
 
 
 class SampleHolder(Device):
+    """
+    Consider adding manipulator to sampleholder so that
+    we can just operate on the SampleHolder...
+    """
     sample = Cpt(Sample, kind='config')
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args,  manipulator=None, geometry=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.add_manipulator(manipulator)
         self._reset()
+        if geometry is not None:
+            self.add_geometry(geometry)
+
+    def add_manipulator(self, manipulator):
+        if manipulator is not None:
+            manipulator.add_holder(self)
+        self.manipulator = manipulator
 
     def _reset(self):
         self.sides = []
