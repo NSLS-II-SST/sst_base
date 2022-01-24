@@ -32,7 +32,7 @@ class ManipulatorBase(PseudoPositioner):
         if self.origin is None:
             return mp
         else:
-            beam_pos = (x - ox for x, ox in zip(mp, self.origin))
+            beam_pos = tuple(x - ox for x, ox in zip(mp, self.origin))
             return beam_pos
 
     def beam_to_manip_frame(self, *bp):
@@ -43,7 +43,7 @@ class ManipulatorBase(PseudoPositioner):
         if self.origin is None:
             return bp
         else:
-            manip_pos = (x + ox for x, ox in zip(bp, self.origin))
+            manip_pos = tuple(x + ox for x, ox in zip(bp, self.origin))
             return manip_pos
 
     @pseudo_position_argument
