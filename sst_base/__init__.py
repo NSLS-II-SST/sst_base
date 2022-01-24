@@ -1,6 +1,4 @@
-from pkg_resources import get_distribution, DistributionNotFound
-try:
-    __version__ = get_distribution(__name__).version
-except DistributionNotFound:
-   # package is not installed
-   pass
+
+from ._version import get_versions
+__version__ = get_versions()['version']
+del get_versions
