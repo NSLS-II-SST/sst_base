@@ -1,9 +1,10 @@
 import pytest
 
-from bl_base.sampleholder import SampleHolder
-from bl_funcs.geometry.linalg import vec
+from sst_base.sampleholder import SampleHolder
+from sst_funcs.geometry.linalg import vec
 import numpy as np
 
+# Needs to be rewritten to follow new SampleHolder api
 
 @pytest.fixture
 def unit_bar():
