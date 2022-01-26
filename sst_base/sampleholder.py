@@ -32,20 +32,20 @@ def make_1d_bar(length):
 
 
 def make_two_sided_bar(width, height, thickness=0, parent=None):
-    y = -width/2.0
+    y = width/2.0
     x = thickness/2.0
     z = height
     p1 = vec(x, y, z)
     p2 = p1 + vec(0, 0, -1)
-    p3 = p1 + vec(0, 1, 0)
+    p3 = p1 + vec(0, -1, 0)
     side1 = Panel(p1, p2, p3, width=width, height=height, parent=parent)
 
-    y = width/2.0
+    y = -width/2.0
     x = -thickness/2.0
     z = height
     p1 = vec(x, y, z)
     p2 = p1 + vec(0, 0, -1)
-    p3 = p1 + vec(0, 1, 0)
+    p3 = p1 + vec(0, -1, 0)
 
     side2 = Panel(p1, p2, p3, width=width, height=height, parent=parent)
 
