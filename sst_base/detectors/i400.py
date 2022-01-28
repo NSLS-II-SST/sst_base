@@ -2,6 +2,19 @@ from ophyd import Device, Component as Cpt, EpicsSignal, Signal, EpicsSignalRO
 from ophyd.status import SubscriptionStatus
 from ophyd.signal import DEFAULT_EPICSSIGNAL_VALUE
 
+class I400MonRO(EpicsSignalRO):
+    def set_exposure(self, time):
+        self.parent.set_exposure(time)
+
+    def describe(self):
+        """
+        Temporary override until I can fix PREC in EPICS
+        """
+        res = super().describe()
+        for k in res:
+            res[k]['precision'] = 3
+        return res
+
 class I400(Device):
     exposure_sp = Cpt(Signal, name="exposure_time", kind="config")
     exposure = Cpt(EpicsSignalRO, ":ITIME_MON")
@@ -15,14 +28,15 @@ class I400(Device):
     err = Cpt(EpicsSignalRO, ":ERR", kind="config")
     sts = Cpt(EpicsSignalRO, ":STS", kind="config")
     clrerr = Cpt(EpicsSignal, ":EXECUTE_CLEAR.PROC", kind="omitted")
-    i1 = Cpt(EpicsSignalRO, ":I1_MON", kind="hinted")
-    i2 = Cpt(EpicsSignalRO, ":I2_MON", kind="hinted")
-    i3 = Cpt(EpicsSignalRO, ":I3_MON", kind="hinted")
-    i4 = Cpt(EpicsSignalRO, ":I4_MON", kind="hinted")
+    i1 = Cpt(I400MonRO, ":I1_MON", kind="hinted")
+    i2 = Cpt(I400MonRO, ":I2_MON", kind="hinted")
+    i3 = Cpt(I400MonRO, ":I3_MON", kind="hinted")
+    i4 = Cpt(I400MonRO, ":I4_MON", kind="hinted")
     acquire = Cpt(EpicsSignal, ":COUNT_TRIGGERS", kind="omitted")
     acquire_mode = Cpt(EpicsSignal, ":IC_UPDATE_MODE", kind="omitted")
     accum_mon = Cpt(EpicsSignalRO, ":ACCUM_MON", kind="config")
     accum_sp = Cpt(EpicsSignal, ":ACCUM_SP", kind="omitted")
+    disable = Cpt(EpicsSignal, ":ENABLE_IC_UPDATES", kind="omitted")
     
     def clear_errors(self):
         self.clrerr.set(1)
@@ -48,7 +62,7 @@ class I400(Device):
                              "integration time of {int_time}s for {self.name}")
         npoints = int(exp_time/int_time)
         self.points.set(f"{npoints:d}")
-        self.exposure_time.set(f"{npoints*int_time}")
+        self.exposure_sp.set(f"{npoints*int_time}")
 
     def set_average_mode(self, average_mode):
         """
