@@ -1,7 +1,40 @@
-from ophyd import EpicsMotor, EpicsSignal
+from ophyd import EpicsMotor, EpicsSignal, Signal
 from ophyd import Component as Cpt
+from ophyd.status import wait as status_wait
 import bluesky.plan_stubs as bps
 from sst_funcs.printing import boxed_text, colored, whisper
+
+
+class DeadbandEpicsMotor(EpicsMotor):
+    """
+    An EpicsMotor subclass that has an absolute tolerance for moves.
+    If the readback is within tolerance of the setpoint, the MoveStatus
+    is marked as finished, even if the motor is still settling.
+
+    This prevents motors with long, but irrelevant, settling times from
+    adding overhead to scans.
+    """
+    tolerance = Cpt(Signal, value=0, kind='config')
+
+    def move(self, position, wait=True, **kwargs):
+        status = super().move(position, wait=False, **kwargs)
+        setpoint = position
+        tolerance = self.tolerance.get()
+
+        def check_deadband(value, timestamp, **kwargs):
+            if abs(value - setpoint) < tolerance:
+                status.set_finished()
+                self.readback.clear_sub(check_deadband)
+
+        self.readback.subscribe(check_deadband)
+        try:
+            if wait:
+                status_wait(status)
+        except KeyboardInterrupt:
+            self.stop()
+            raise
+
+        return status
 
 
 class FMBOEpicsMotor(EpicsMotor):
@@ -140,6 +173,10 @@ class FMBOEpicsMotor(EpicsMotor):
                 whisper(suffix),
             )
         boxed_text("%s status signals" % self.name, text, "green", shrink=True)
+
+
+class DeadbandFMBOEpicsMotor(DeadbandEpicsMotor, FMBOEpicsMotor):
+    pass
 
 
 class prettymotor(EpicsMotor):
