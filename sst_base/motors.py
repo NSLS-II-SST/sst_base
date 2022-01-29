@@ -24,9 +24,9 @@ class DeadbandEpicsMotor(EpicsMotor):
         def check_deadband(value, timestamp, **kwargs):
             if abs(value - setpoint) < tolerance:
                 status.set_finished()
-                self.readback.clear_sub(check_deadband)
+                self.clear_sub(check_deadband, event_type=self.SUB_READBACK)
 
-        self.readback.subscribe(check_deadband)
+        self.subscribe(check_deadband, event_type=self.SUB_READBACK)
         try:
             if wait:
                 status_wait(status)
