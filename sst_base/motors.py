@@ -1,5 +1,5 @@
 from ophyd import EpicsMotor, EpicsSignal, Signal, PositionerBase, Device
-from ophyd.pv_positioner import PV_Positioner
+from ophyd.pv_positioner import PVPositioner
 from ophyd import Component as Cpt
 from ophyd.status import wait as status_wait
 import bluesky.plan_stubs as bps
@@ -10,7 +10,7 @@ class DeadbandMixin(Device, PositionerBase):
     """
     Should be the leftmost class in the inheritance list so that it grabs move first!
 
-    Must be combined with either EpicsMotor or PV_Positioner, or some other class
+    Must be combined with either EpicsMotor or PVPositioner, or some other class
     that has a done_value attribute
 
     An EpicsMotor subclass that has an absolute tolerance for moves.
@@ -63,9 +63,9 @@ class DeadbandEpicsMotor(DeadbandMixin, EpicsMotor):
     pass
 
 
-class DeadbandPVPositioner(DeadbandMixin, PV_Positioner):
+class DeadbandPVPositioner(DeadbandMixin, PVPositioner):
     """
-    A PV_Positioner subclass that has an absolute tolerance for moves.
+    A PVPositioner subclass that has an absolute tolerance for moves.
     If the readback is within tolerance of the setpoint, the MoveStatus
     is marked as finished, even if the motor is still settling.
 
