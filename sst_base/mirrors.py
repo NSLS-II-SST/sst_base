@@ -1,6 +1,7 @@
 from ophyd import Device, Signal, EpicsSignal, EpicsSignalRO, PVPositioner
 from ophyd import FormattedComponent as FmtCpt, Component as Cpt
 from ophyd.signal import SignalRO
+from sst_base.motors import DeadbandMixin
 
 class HexapodMirror(Device):
     x = Cpt(EpicsSignal, 'X}Mtr_MON',write_pv='X}Mtr_SP',kind='hinted')
@@ -21,7 +22,7 @@ class FMBHexapodMirrorAxis(PVPositioner):
     done = FmtCpt(EpicsSignalRO, '{self.parent.prefix}}}BUSY_STS')
     done_value = 0
 
-class FMBHexapodMirrorAxisStandAlonePitch(PVPositioner):
+class FMBHexapodMirrorAxisStandAlonePitch(DeadbandMixin, PVPositioner):
     readback = Cpt(EpicsSignalRO, "-Ax:P}Mtr_MON")
     setpoint = Cpt(EpicsSignal, "-Ax:P}Mtr_POS_SP")
     actuate = Cpt(EpicsSignal, "}MOVE_CMD.PROC")

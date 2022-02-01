@@ -1,4 +1,4 @@
-from ophyd import EpicsMotor, EpicsSignal, Signal
+from ophyd import EpicsMotor, EpicsSignal, Signal, PositionerBase, Device
 from ophyd import Component as Cpt
 from ophyd.status import wait as status_wait
 import bluesky.plan_stubs as bps
@@ -6,6 +6,37 @@ from sst_funcs.printing import boxed_text, colored, whisper
 
 
 class DeadbandEpicsMotor(EpicsMotor):
+    """
+    An EpicsMotor subclass that has an absolute tolerance for moves.
+    If the readback is within tolerance of the setpoint, the MoveStatus
+    is marked as finished, even if the motor is still settling.
+
+    This prevents motors with long, but irrelevant, settling times from
+    adding overhead to scans.
+    """
+    tolerance = Cpt(Signal, value=0, kind='config')
+
+    def move(self, position, wait=True, **kwargs):
+        status = super().move(position, wait=False, **kwargs)
+        setpoint = position
+        tolerance = self.tolerance.get()
+
+        def check_deadband(value, timestamp, **kwargs):
+            if abs(value - setpoint) < tolerance:
+                status.set_finished()
+                self.clear_sub(check_deadband, event_type=self.SUB_READBACK)
+
+        self.subscribe(check_deadband, event_type=self.SUB_READBACK)
+        try:
+            if wait:
+                status_wait(status)
+        except KeyboardInterrupt:
+            self.stop()
+            raise
+
+        return status
+
+class DeadbandMixin(Device, PositionerBase):
     """
     An EpicsMotor subclass that has an absolute tolerance for moves.
     If the readback is within tolerance of the setpoint, the MoveStatus
