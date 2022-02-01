@@ -29,16 +29,16 @@ class DeadbandMixin(Device, PositionerBase):
         else:
             status = super().move(position, wait=False, **kwargs)
             setpoint = position
-
+            done_value = getattr(self, "done_value", 1)
             def check_deadband(value, timestamp, **kwargs):
-                if abs(value - setpoint) < tolerance:
-                    self._move_changed(timestamp=timestamp, value=self.done_value)
+                if abs(value - setpoint) < tolerance:                    
+                    self._move_changed(timestamp=timestamp, value=done_value)
 
-            def clear_deadband(*args):
+            def clear_deadband(*args, **kwargs):
                 self.clear_sub(check_deadband, event_type=self.SUB_READBACK)
 
-            self.subscribe(check_deadband, event_type=self.SUB_READBACK)
-            self.subscribe(clear_deadband, event_type=self._SUB_REQ_DONE)
+            self.subscribe(check_deadband, event_type=self.SUB_READBACK, run=False)
+            self.subscribe(clear_deadband, event_type=self._SUB_REQ_DONE, run=False)
             try:
                 if wait:
                     status_wait(status)
