@@ -26,7 +26,7 @@ class DeadbandMixin(Device, PositionerBase):
     def _done_moving(self, success=True, timestamp=None, value=None, **kwargs):
         '''Call when motion has completed.  Runs ``SUB_DONE`` subscription.'''
         if self.move_latch.get():
-            print(f"{timestamp}: {self.name} marked done")
+            # print(f"{timestamp}: {self.name} marked done")
             if success:
                 self._run_subs(sub_type=self.SUB_DONE, timestamp=timestamp,
                                value=value)
@@ -47,13 +47,14 @@ class DeadbandMixin(Device, PositionerBase):
             done_value = getattr(self, "done_value", 1)
             def check_deadband(value, timestamp, **kwargs):
                 if abs(value - setpoint) < tolerance:
-                    print(f"{timestamp}: {self.name} {value} within tolerance of {setpoint}, sending {done_value}")
+                    # print(f"{timestamp}: {self.name} {value} within tolerance of {setpoint}, sending {done_value}")
                     self._done_moving(timestamp=timestamp, success=True, value=done_value)
                 else:
-                    print(f"{timestamp}: {self.name}, {value} not within {tolerance} of {setpoint}")
+                    pass
+                    # print(f"{timestamp}: {self.name}, {value} not within {tolerance} of {setpoint}")
                     
             def clear_deadband(*args, timestamp, **kwargs):
-                print(f"{timestamp}: Ran deadband clear for {self.name}")
+                # print(f"{timestamp}: Ran deadband clear for {self.name}")
                 self.clear_sub(check_deadband, event_type=self.SUB_READBACK)
 
             self.subscribe(clear_deadband, event_type=self._SUB_REQ_DONE, run=False)
