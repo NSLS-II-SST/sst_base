@@ -72,7 +72,7 @@ class I400(Device):
             2: Average with no-lost-charge method
             3: Average with no charge correction
         """
-        self.accum_mode.set(average_mode)
+        self.accum_sp.set(average_mode)
 
     def trigger(self):
         status = SubscriptionStatus(self.i1, lambda *arg, **kwargs: True, run=False)
