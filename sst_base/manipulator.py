@@ -1,10 +1,10 @@
-from ophyd import PseudoPositioner, PseudoSingle, Device
+from ophyd import PseudoPositioner, Device
 from ophyd import Component as Cpt
 from ophyd.pseudopos import (pseudo_position_argument, real_position_argument,
                              _to_position_tuple)
 from .sampleholder import dummy_holder
 from sst_funcs.geometry.linalg import vec
-
+from sst_base.positioners import PseudoSingle
 
 class ManipulatorBase(PseudoPositioner):
     # Really need a discrete manipulator that can be set to

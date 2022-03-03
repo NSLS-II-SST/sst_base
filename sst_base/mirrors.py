@@ -1,7 +1,7 @@
 from ophyd import Device, Signal, EpicsSignal, EpicsSignalRO, PVPositioner
 from ophyd import FormattedComponent as FmtCpt, Component as Cpt
 from ophyd.signal import SignalRO
-from sst_base.motors import DeadbandMixin
+from sst_base.positioners import DeadbandMixin
 
 class HexapodMirror(Device):
     x = Cpt(EpicsSignal, 'X}Mtr_MON',write_pv='X}Mtr_SP',kind='hinted')
