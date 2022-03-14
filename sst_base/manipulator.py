@@ -6,6 +6,7 @@ from .sampleholder import dummy_holder
 from sst_funcs.geometry.linalg import vec
 from sst_base.positioners import PseudoSingle
 
+
 class ManipulatorBase(PseudoPositioner):
     # Really need a discrete manipulator that can be set to
     # one of several sample positions. May just be a sampleholder

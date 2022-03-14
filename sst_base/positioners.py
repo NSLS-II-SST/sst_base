@@ -46,7 +46,6 @@ class DeadbandMixin(Device, PositionerBase):
             done_value = getattr(self, "done_value", 1)
             def check_deadband(value, timestamp, **kwargs):
                 if abs(value - setpoint) < tolerance:
-                    # print(f"{timestamp}: {self.name} {value} within tolerance of {setpoint}, sending {done_value}")
                     self._done_moving(timestamp=timestamp,
                                       success=True,
                                       value=done_value)
