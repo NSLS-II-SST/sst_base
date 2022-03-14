@@ -118,14 +118,22 @@ class SampleHolder(Device):
         self.manipulator = manipulator
 
     def _reset(self):
+        self.clear_samples()
         self.sides = []
+        self._has_geometry = False
+
+
+    def clear_samples(self):
+        """
+        Removes all samples from holder, if any, and re-adds
+        the null frame
+        """
         self.sample_frames = {}
         self.sample_md = {}
         null_frame = NullFrame()
         self._add_frame(null_frame, "null", "null", -1)
         self.set("null")
-        self._has_geometry = False
-
+                
     @property
     def samples(self):
         return list(self.sample_frames.keys())
@@ -138,7 +146,7 @@ class SampleHolder(Device):
         self.sides[side_num].update_basis(*args)
 
     def set(self, sample_id, **kwargs):
-        _md = self.sample_md[sample_id]
+        _md = self.sample_md[f"{sample_id}"]
         md = {}
         md.update(_md)
         md.update(kwargs)

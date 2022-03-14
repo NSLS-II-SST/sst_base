@@ -7,6 +7,7 @@ from sst_funcs.printing import boxed_text, colored, whisper
 from sst_base.positioners import DeadbandMixin
 
 
+
 class FMBOEpicsMotor(EpicsMotor):
     resolution = Cpt(EpicsSignal, ".MRES")
     encoder = Cpt(EpicsSignal, ".REP")
