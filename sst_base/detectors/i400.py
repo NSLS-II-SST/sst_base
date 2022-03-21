@@ -28,6 +28,7 @@ class I400(Device):
     err = Cpt(EpicsSignalRO, ":ERR", kind="config")
     sts = Cpt(EpicsSignalRO, ":STS", kind="config")
     clrerr = Cpt(EpicsSignal, ":EXECUTE_CLEAR.PROC", kind="omitted")
+    auto_acquire = Cpt(EpicsSignal, ":TRIGLOOP_RESTART_.DISA", kind="config")
     i1 = Cpt(I400MonRO, ":I1_MON", kind="hinted")
     i2 = Cpt(I400MonRO, ":I2_MON", kind="hinted")
     i3 = Cpt(I400MonRO, ":I3_MON", kind="hinted")
@@ -55,6 +56,23 @@ class I400(Device):
             self.range_sp.set(ioc_range)
             self.range_set.set(1)
 
+    def stage(self):
+        self._was_auto_acquiring = (self.auto_acquire.get() == 0)
+        self.halt_auto_acquire()
+        super().stage()
+
+    def unstage(self):
+        if self._was_auto_acquiring:
+            self.start_auto_acquire()
+        super().unstage()
+
+    def start_auto_acquire(self):
+        self.auto_acquire.set(0)
+        self.acquire.set(1)
+        
+    def halt_auto_acquire(self):
+        self.auto_acquire.put(1)
+        
     def set_exposure(self, exp_time):
         int_time = self.period_mon.get()
         if exp_time < int_time:
