@@ -93,7 +93,8 @@ class I400(Device):
         self.accum_sp.set(average_mode)
 
     def trigger(self):
-        status = SubscriptionStatus(self.i1, lambda *arg, **kwargs: True, run=False)
+        timeout = float(self.exposure_sp.get())*2
+        status = SubscriptionStatus(self.i1, lambda *arg, **kwargs: True, run=False, timeout=timeout)
         self.acquire.set(1)
         return status
 
