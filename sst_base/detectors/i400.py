@@ -17,7 +17,7 @@ class I400MonRO(EpicsSignalRO):
 
 class I400(Device):
     exposure_sp = Cpt(Signal, name="exposure_time", kind="config")
-    exposure = Cpt(EpicsSignalRO, ":ITIME_MON")
+    exposure = Cpt(EpicsSignalRO, ":ITIME_MON", kind='config')
     range_sp = Cpt(EpicsSignal, ":RANGE", kind="omitted")
     range_set = Cpt(EpicsSignal, ":SET_RANGE.PROC", kind="omitted")
     range_mon = Cpt(EpicsSignalRO, ":RANGE_MON", kind="config")
