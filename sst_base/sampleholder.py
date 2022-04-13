@@ -223,7 +223,11 @@ class SampleHolder(Device):
         elif val not in self.samples:
             raise ValueError(f"{val} not in sample keys")
 
-
+    def print_samples(self):
+        print(f"Samples loaded on {self.name}:")
+        for v in self.sample_md.values():
+            print(f"{v['sample_id']}: {v['sample_name']}")
+    
 dummy_holder = SampleHolder(name="dummy_holder")
 dummy_geometry = make_regular_polygon(1, 1, 4)
 dummy_holder.add_geometry(dummy_geometry)

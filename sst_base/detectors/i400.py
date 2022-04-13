@@ -1,5 +1,7 @@
+import time as ttime
+import threading
 from ophyd import Device, Component as Cpt, EpicsSignal, Signal, EpicsSignalRO
-from ophyd.status import SubscriptionStatus
+from ophyd.status import DeviceStatus, SubscriptionStatus
 from ophyd.signal import DEFAULT_EPICSSIGNAL_VALUE
 
 class I400MonRO(EpicsSignalRO):
@@ -28,11 +30,12 @@ class I400(Device):
     err = Cpt(EpicsSignalRO, ":ERR", kind="config")
     sts = Cpt(EpicsSignalRO, ":STS", kind="config")
     clrerr = Cpt(EpicsSignal, ":EXECUTE_CLEAR.PROC", kind="omitted")
+    auto_acquire = Cpt(EpicsSignal, ":TRIGLOOP_RESTART_.DISA", kind="config")
     i1 = Cpt(I400MonRO, ":I1_MON", kind="hinted")
     i2 = Cpt(I400MonRO, ":I2_MON", kind="hinted")
     i3 = Cpt(I400MonRO, ":I3_MON", kind="hinted")
     i4 = Cpt(I400MonRO, ":I4_MON", kind="hinted")
-    acquire = Cpt(EpicsSignal, ":COUNT_TRIGGERS", kind="omitted")
+    acquire = Cpt(EpicsSignal, ":ACQUIRE", kind="omitted")
     acquire_mode = Cpt(EpicsSignal, ":IC_UPDATE_MODE", kind="omitted")
     accum_mon = Cpt(EpicsSignalRO, ":ACCUM_MON", kind="config")
     accum_sp = Cpt(EpicsSignal, ":ACCUM_SP", kind="omitted")
@@ -55,11 +58,30 @@ class I400(Device):
             self.range_sp.set(ioc_range)
             self.range_set.set(1)
 
+    def stage(self):
+        self._was_auto_acquiring = (self.auto_acquire.get() == 0)
+        self.halt_auto_acquire()
+        super().stage()
+
+    def unstage(self):
+        if self._was_auto_acquiring:
+            self.start_auto_acquire()
+        super().unstage()
+
+    def start_auto_acquire(self):
+        self.auto_acquire.set(0)
+        self.acquire.set(1)
+        
+    def halt_auto_acquire(self):
+        self.auto_acquire.put(1)
+        
     def set_exposure(self, exp_time):
         int_time = self.period_mon.get()
         if exp_time < int_time:
             raise ValueError(f"Exposure time {exp_time}s is less than "
                              "integration time of {int_time}s for {self.name}")
+        if int_time == 0:
+            raise RuntimeError(f"Integration time is 0 for {self.name}, check for communication error")
         npoints = int(exp_time/int_time)
         self.points.set(f"{npoints:d}")
         self.exposure_sp.set(f"{npoints*int_time}")
@@ -73,9 +95,12 @@ class I400(Device):
             3: Average with no charge correction
         """
         self.accum_sp.set(average_mode)
-
+            
     def trigger(self):
-        status = SubscriptionStatus(self.i1, lambda *arg, **kwargs: True, run=False)
+        def check_value(*, old_value, value, **kwargs):
+            success = (old_value == 1 and value == 0)
+            return success
+        status = SubscriptionStatus(self.acquire, check_value, run=False)
         self.acquire.set(1)
         return status
 
