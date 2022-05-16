@@ -150,7 +150,7 @@ class DeadbandFMBOEpicsMotor(DeadbandMixin, FMBOEpicsMotor):
     pass
 
 
-class prettymotor(EpicsMotor):
+class PrettyMotor(EpicsMotor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.read_attrs = ["user_readback", "user_setpoint"]
@@ -183,5 +183,5 @@ class prettymotor(EpicsMotor):
                    shrink=True)
 
 
-class PrettyMotorFMBO(FMBOEpicsMotor, prettymotor):
+class PrettyMotorFMBO(FMBOEpicsMotor, PrettyMotor):
     pass
