@@ -182,6 +182,35 @@ class PrettyMotor(EpicsMotor):
         boxed_text(self.name + " location", self.where_sp(), "green",
                    shrink=True)
 
+    def status_or_rel_move(self, line):
+        try:
+            loc = float(line)
+        except:
+            if len(line) > 0:
+                if line[0] == "s":
+                    self.status()  # followed by an s, display status
+                elif line[0] == "a":
+                    try:
+                        loc = float(line[1:])
+                    except:
+                        # followed by an a but not a number, just display location
+                        boxed_text(self.name, self.where_sp(), "lightgray", shrink=True)
+                    else:
+                        # followed by an a and a number, do absolute move
+                        yield from bps.mv(self, loc)
+                        boxed_text(self.name, self.where_sp(), "lightgray", shrink=True)
+                else:
+                    # followed by something besides a number, a or s, just show location
+                    boxed_text(self.name, self.where_sp(), "lightgray", shrink=True)
+            else:
+                # followed by something besides a number, a or s, just show location
+                boxed_text(self.name, self.where_sp(), "lightgray", shrink=True)
+        else:
+            # followed by a number - relative move
+            yield from bps.mvr(self, loc)
+            boxed_text(self.name, self.where(), "lightgray", shrink=True)
+
+
 
 class PrettyMotorFMBO(FMBOEpicsMotor, PrettyMotor):
     pass
