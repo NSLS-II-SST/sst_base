@@ -64,7 +64,7 @@ class I400(Device):
         super().stage()
 
     def unstage(self):
-        if self._was_auto_acquiring:
+        if getattr(self, "_was_auto_acquiring", False):
             self.start_auto_acquire()
         super().unstage()
 

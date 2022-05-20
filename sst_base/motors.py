@@ -150,6 +150,10 @@ class DeadbandFMBOEpicsMotor(DeadbandMixin, FMBOEpicsMotor):
     pass
 
 
+class DeadbandEpicsMotor(DeadbandMixin, EpicsMotor):
+    pass
+
+
 class PrettyMotor(EpicsMotor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
