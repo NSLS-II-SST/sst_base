@@ -12,9 +12,7 @@ from ophyd import (
     ProsilicaDetectorCam,
     ColorConvPlugin,
 )
-from ophyd.areadetector.filestore_mixins import (
-    FileStoreTIFFIterativeWrite,
-)
+from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite
 from ophyd import Component as Cpt
 from nslsii.ad33 import SingleTriggerV33, StatsPluginV33
 
@@ -38,8 +36,7 @@ class ProsilicaDetectorCamV33(ProsilicaDetectorCam):
     process
     """
 
-    wait_for_plugins = Cpt(EpicsSignal, "WaitForPlugins", string=True,
-                           kind="hinted")
+    wait_for_plugins = Cpt(EpicsSignal, "WaitForPlugins", string=True, kind="hinted")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -109,8 +106,8 @@ class StandardProsilicaWithTIFF(StandardProsilica):
     tiff = Cpt(
         TIFFPluginWithFileStore,
         suffix="TIFF1:",
-        write_path_template="/areadata/images/data/%Y/%m/%d/",
-        root="/areadata/images/data",
+        write_path_template="/nsls2/data/sst/assets/%Y/%m/%d/",
+        root="/nsls2/data/sst/assets",
     )
 
 
@@ -118,6 +115,19 @@ class StandardProsilicaWithTIFFV33(StandardProsilicaV33):
     tiff = Cpt(
         TIFFPluginWithFileStore,
         suffix="TIFF1:",
-        write_path_template="/areadata/images/data/%Y/%m/%d/",
-        root="/areadata/images/data",
+        write_path_template="/nsls2/data/sst/assets/%Y/%m/%d/",
+        root="/nsls2/data/sst/assets",
     )
+
+class ColorProsilicaWithTIFFV33(StandardProsilicaV33):
+    tiff = Cpt(
+        TIFFPluginWithFileStore,
+        suffix="TIFF1:",
+        write_path_template="/nsls2/data/sst/assets/%Y/%m/%d/",
+        root="/nsls2/data/sst/assets",
+    )
+    def describe(self):
+        res = super().describe()
+        # Patch: device has a color dimension that is not reported correctly
+        # by ophyd.
+        res["Sample Imager Detector Area Camera_image"]["shape"] = (*res["Sample Imager Detector Area Camera_image"]["shape"], 3)
