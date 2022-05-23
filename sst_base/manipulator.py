@@ -50,6 +50,8 @@ class ManipulatorBase(PseudoPositioner):
     @pseudo_position_argument
     def forward(self, pp):
         bp = self.holder.frame_to_beam(*pp)
+        if type(bp) in [float, int]:
+            bp = (bp,)
         rp = self.beam_to_manip_frame(*bp)
         return self.RealPosition(*rp)
 
@@ -57,6 +59,8 @@ class ManipulatorBase(PseudoPositioner):
     def inverse(self, rp):
         bp = self.manip_to_beam_frame(*rp)
         pp = self.holder.beam_to_frame(*bp)
+        if type(pp) in [float, int]:
+            pp = (pp,)
         return self.PseudoPosition(*pp)
 
     def to_pseudo_tuple(self, *args, **kwargs):
