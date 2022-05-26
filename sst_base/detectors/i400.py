@@ -1,8 +1,6 @@
-import time as ttime
-import threading
 from ophyd import Device, Component as Cpt, EpicsSignal, Signal, EpicsSignalRO
-from ophyd.status import DeviceStatus, SubscriptionStatus
-from ophyd.signal import DEFAULT_EPICSSIGNAL_VALUE
+from ophyd.status import SubscriptionStatus
+
 
 class I400MonRO(EpicsSignalRO):
     def set_exposure(self, time):
@@ -16,6 +14,7 @@ class I400MonRO(EpicsSignalRO):
         for k in res:
             res[k]['precision'] = 3
         return res
+
 
 class I400(Device):
     exposure_sp = Cpt(Signal, name="exposure_time", kind="config")
@@ -40,7 +39,7 @@ class I400(Device):
     accum_mon = Cpt(EpicsSignalRO, ":ACCUM_MON", kind="config")
     accum_sp = Cpt(EpicsSignal, ":ACCUM_SP", kind="omitted")
     disable = Cpt(EpicsSignal, ":ENABLE_IC_UPDATES", kind="omitted")
-    
+
     def clear_errors(self):
         self.clrerr.set(1)
 
@@ -71,10 +70,10 @@ class I400(Device):
     def start_auto_acquire(self):
         self.auto_acquire.set(0)
         self.acquire.set(1)
-        
+
     def halt_auto_acquire(self):
         self.auto_acquire.put(1)
-        
+
     def set_exposure(self, exp_time):
         int_time = self.period_mon.get()
         if exp_time < int_time:
@@ -88,14 +87,14 @@ class I400(Device):
 
     def set_average_mode(self, average_mode):
         """
-        accum_mode : 
+        accum_mode :
             0: No averaging
             1: Average with charge interpolation
             2: Average with no-lost-charge method
             3: Average with no charge correction
         """
         self.accum_sp.set(average_mode)
-            
+
     def trigger(self):
         def check_value(*, old_value, value, **kwargs):
             success = (old_value == 1 and value == 0)
