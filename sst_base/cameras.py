@@ -131,3 +131,5 @@ class ColorProsilicaWithTIFFV33(StandardProsilicaV33):
         # Patch: device has a color dimension that is not reported correctly
         # by ophyd.
         res["Sample Imager Detector Area Camera_image"]["shape"] = (*res["Sample Imager Detector Area Camera_image"]["shape"], 3)
+        res["Sample Imager Detector Area Camera_image"]["dtype_str"] = "|u1"
+        return res
