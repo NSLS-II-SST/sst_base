@@ -32,16 +32,16 @@ def make_1d_bar(length):
 
 
 def make_two_sided_bar(width, height, thickness=0, parent=None):
-    y = width/2.0
-    x = thickness/2.0
+    y = width / 2.0
+    x = thickness / 2.0
     z = height
     p1 = vec(x, y, z)
     p2 = p1 + vec(0, 0, -1)
     p3 = p1 + vec(0, -1, 0)
     side1 = Panel(p1, p2, p3, width=width, height=height, parent=parent)
 
-    y = -width/2.0
-    x = -thickness/2.0
+    y = -width / 2.0
+    x = -thickness / 2.0
     z = height
     p1 = vec(x, y, z)
     p2 = p1 + vec(0, 0, -1)
@@ -62,8 +62,8 @@ def make_regular_polygon(width, height, nsides, points=None,
         az = 1
 
     if points is None:
-        y = -1*az*width/2.0
-        x = width/(2.0*np.tan(interior_angle/2.0))
+        y = -1 * az * width / 2.0
+        x = width / (2.0 * np.tan(interior_angle / 2.0))
         if invert:
             z = height
         else:
@@ -105,7 +105,7 @@ class SampleHolder(Device):
     """
     sample = Cpt(Sample, kind='config')
 
-    def __init__(self, *args,  manipulator=None, geometry=None, **kwargs):
+    def __init__(self, *args, manipulator=None, geometry=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.add_manipulator(manipulator)
         self._reset()
@@ -122,7 +122,6 @@ class SampleHolder(Device):
         self.sides = []
         self._has_geometry = False
 
-
     def clear_samples(self):
         """
         Removes all samples from holder, if any, and re-adds
@@ -133,7 +132,7 @@ class SampleHolder(Device):
         null_frame = NullFrame()
         self._add_frame(null_frame, "null", "null", -1)
         self.set("null")
-                
+
     @property
     def samples(self):
         return list(self.sample_frames.keys())
@@ -227,7 +226,7 @@ class SampleHolder(Device):
         print(f"Samples loaded on {self.name}:")
         for v in self.sample_md.values():
             print(f"{v['sample_id']}: {v['sample_name']}")
-    
+
 dummy_holder = SampleHolder(name="dummy_holder")
 dummy_geometry = make_regular_polygon(1, 1, 4)
 dummy_holder.add_geometry(dummy_geometry)
