@@ -3,6 +3,7 @@ from ophyd import Device, Signal, Component as Cpt
 from ophyd.status import StatusBase
 from sst_funcs.geometry.frames import Panel, Interval, NullFrame
 from sst_funcs.geometry.linalg import vec, deg_to_rad
+import copy
 
 
 class Sample(Device):
@@ -13,9 +14,9 @@ class Sample(Device):
     origin = Cpt(Signal, value="")
 
     def set(self, md):
-        self.sample_name.set(md['sample_name'])
+        self.sample_name.set(md['name'])
         self.sample_id.set(md['sample_id'])
-        self.sample_desc.set(md['sample_desc'])
+        self.sample_desc.set(md['description'])
         self.side.set(md['side'])
         if md.get('origin', None) is None:
             self.origin.kind = "omitted"
@@ -151,12 +152,20 @@ class SampleHolder(Device):
         md.update(kwargs)
         return self.sample.set(md)
 
-    def _add_frame(self, frame, sample_id, name, side=-1, desc="",
-                   origin='edge'):
-        md = {"sample_id": sample_id,
-              "sample_name": name,
-              "side": side,
-              "sample_desc": desc}
+    def current_sample_md(self):
+        sample_id = self.sample.sample_id.get()
+        md = copy.deepcopy(self.sample_md[sample_id])
+        return md
+
+    def _add_frame(self, frame, sample_id, name, side=-1, description="",
+                   origin='edge', **kwargs):
+        md = {}
+        md.update(kwargs)
+        _md = {"sample_id": sample_id,
+               "name": name,
+               "side": side,
+               "description": description}
+        md.update(_md)
         self.sample_frames[sample_id] = frame
         self.sample_md[sample_id] = md
 
@@ -176,11 +185,13 @@ class SampleHolder(Device):
         for s in self.sides:
             s.add_parent_frame(frame)
 
-    def add_sample(self, sample_id, name, position, side, desc="", **kwargs):
+    def add_sample(self, sample_id, name, position, side, t=0, **kwargs):
         """
         sample_id: Unique sample identifier
         position: x1, y1, x2, y2 tuple
         side: side number (starting from 1)
+        t: thickness (0 by default)
+        kwargs: additional keywords to use as sample metadata, such as description, cas, or other catalog number/info
         """
         if not self._has_geometry:
             raise RuntimeError("Bar has no geometry loaded. "
@@ -189,8 +200,8 @@ class SampleHolder(Device):
             raise ValueError(f"Side {side} too large, bar only has"
                              " {len(self.sides)} sides!")
         s = self.sides[side - 1]
-        frame = s.make_sample_frame(position, **kwargs)
-        self._add_frame(frame, sample_id, name, side, desc)
+        frame = s.make_sample_frame(position, t=t)
+        self._add_frame(frame, sample_id, name, side, **kwargs)
 
     def frame_to_beam(self, *args, **kwargs):
         md = {'origin': self.sample.origin.get()}
