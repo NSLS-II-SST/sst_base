@@ -1,7 +1,27 @@
 from ophyd import Device, Component as Cpt, EpicsSignal, Signal, EpicsSignalRO
 from ophyd.status import SubscriptionStatus
+import threading
+#from ophyd.utils.epics_pvs import _set_and_wait
 
-
+class UnreliableEpicsSignal(EpicsSignal):
+    def _set_and_wait(self, value, timeout, **kwargs):
+        N = 3
+        timeout = timeout if timeout is not None else 0.5
+        for j in range(N):
+            try:
+                return epics_pvs._set_and_wait(self, value,
+                                               timeout=timeout,
+                                               atol=self.tolerance,
+                                               rtol=self.rtolerance,
+                                               **kwargs)
+            except TimeoutError:
+                print("I400 signal timed out")
+                pass
+            else:
+                break
+        else:
+            raise TimeoutError  # or might want to capture and stash the one abev
+        
 class I400MonRO(EpicsSignalRO):
     def set_exposure(self, time):
         self.parent.set_exposure(time)
@@ -68,11 +88,11 @@ class I400(Device):
         super().unstage()
 
     def start_auto_acquire(self):
-        self.auto_acquire.set(0)
-        self.acquire.set(1)
+        self.auto_acquire.put(0)
+        self.acquire.put(1)
 
     def halt_auto_acquire(self):
-        self.auto_acquire.put(1)
+        self.auto_acquire.set(1)
 
     def set_exposure(self, exp_time):
         int_time = self.period_mon.get()
@@ -82,9 +102,16 @@ class I400(Device):
         if int_time == 0:
             raise RuntimeError(f"Integration time is 0 for {self.name}, check for communication error")
         npoints = int(exp_time/int_time)
-        self.points.set(f"{npoints:d}")
+        was_auto_acquiring = (self.auto_acquire.get() == 0)
+        self.halt_auto_acquire()
+        try:
+            self.points.set(f"{npoints:d}", timeout=0.5).wait()
+        except TimeoutError:
+            self.points.set(f"{npoints:d}", timeout=0.5).wait()
         self.exposure_sp.set(f"{npoints*int_time}")
-
+        if was_auto_acquiring:
+            self.start_auto_acquire()
+            
     def set_average_mode(self, average_mode):
         """
         accum_mode :
@@ -96,10 +123,19 @@ class I400(Device):
         self.accum_sp.set(average_mode)
 
     def trigger(self):
+        def restart_trigger():
+            print("Trigger failed, retry once")
+            self.acquire.set(0)
+            self.acquire.set(1)
+        exposure_time = float(self.exposure_sp.get())
+        timer = threading.Timer(1.5*exposure_time, restart_trigger)
         def check_value(*, old_value, value, **kwargs):
             success = (old_value == 1 and value == 0)
+            if success:
+                timer.cancel()
             return success
-        status = SubscriptionStatus(self.acquire, check_value, run=False)
+        status = SubscriptionStatus(self.acquire, check_value, timeout=exposure_time*3, run=False)
         self.acquire.set(1)
+        timer.start()
         return status
 

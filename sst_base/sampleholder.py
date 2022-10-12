@@ -236,7 +236,7 @@ class SampleHolder(Device):
     def print_samples(self):
         print(f"Samples loaded on {self.name}:")
         for v in self.sample_md.values():
-            print(f"{v['sample_id']}: {v['sample_name']}")
+            print(f"{v['sample_id']}: {v['name']}")
 
 dummy_holder = SampleHolder(name="dummy_holder")
 dummy_geometry = make_regular_polygon(1, 1, 4)
