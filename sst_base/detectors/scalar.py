@@ -2,6 +2,8 @@ from ophyd import Device, Component as Cpt, EpicsSignal, Signal, EpicsSignalRO
 from ophyd.status import DeviceStatus
 import threading
 import time
+import numpy as np
+
 
 class ScalarBase(Device):
     exposure_time = Cpt(Signal, name="exposure_time", kind="config")
