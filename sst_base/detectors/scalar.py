@@ -7,10 +7,10 @@ import numpy as np
 
 class ScalarBase(Device):
     exposure_time = Cpt(Signal, name="exposure_time", kind="config")
-    mean = Cpt(Signal, name="mean", kind="hinted")
-    std = Cpt(Signal, name="std", kind="hinted")
-    npts = Cpt(Signal, name="points", kind="hinted")
-    sum = Cpt(Signal, name="sum", kind="hinted")
+    mean = Cpt(Signal, name="", kind="hinted")
+    std = Cpt(Signal, name="std")
+    npts = Cpt(Signal, name="points")
+    sum = Cpt(Signal, name="sum")
 
     def set_exposure(self, exp_time):
         self.exposure_time.set(exp_time)
@@ -35,10 +35,12 @@ class ScalarBase(Device):
         threading.Thread(target=self._acquire, args=(status,), daemon=True).start()
         return status
 
-class I400Buffer(ScalarBase):
-    target = Cpt(EpicsSignal, ":I1_MON", kind="omitted")
+class I400SingleCh(ScalarBase):
+    """Need to give full path to target PV during object creation"""
+    
+    target = Cpt(EpicsSignal, "", kind="omitted")
 
-testScalar = I400Buffer("XF:07ID-BI{DM2:I400-1}", name="i400_scalar")
+testScalar = I400SingleCh("XF:07ID-BI{DM2:I400-1}:IC1_MON", name="i400_scalar")
 
 class ADCBuffer(ScalarBase):
     target = Cpt(EpicsSignal, "Volt", kind="omitted")
