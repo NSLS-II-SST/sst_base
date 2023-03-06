@@ -11,12 +11,14 @@ class ScalarBase(Device):
     std = Cpt(Signal, name="std")
     npts = Cpt(Signal, name="points")
     sum = Cpt(Signal, name="sum")
+    rescale = Cpt(Signal, value=1, name="rescale", kind="config")
+    offset = Cpt(Signal, value=0, name="offset", kind="config")
 
     def set_exposure(self, exp_time):
         self.exposure_time.set(exp_time)
 
     def _aggregate(self, value, **kwargs):
-        self._buffer.append(value)
+        self._buffer.append(value*self.rescale.get() - self.offset.get())
 
     def _acquire(self, status):
         self._buffer = []
