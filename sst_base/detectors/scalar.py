@@ -48,3 +48,7 @@ class ADCBuffer(ScalarBase):
     target = Cpt(EpicsSignal, "Volt", kind="omitted")
 
 testADC = ADCBuffer("XF:07ID-BI[ADC:1-Ch:1]", name='adc_test')
+
+class ophScalar(ScalarBase):
+    """Generic Scalar.  Give full path to target PV during object creation """
+    target = Cpt(EpicsSignal, "", kind="omitted")
