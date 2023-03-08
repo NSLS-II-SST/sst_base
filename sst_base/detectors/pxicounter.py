@@ -23,13 +23,16 @@ class PXIScalar(Device):
 
         wait_time = self.timer.integration_time.get()+0.2
 
-        status = SubscriptionStatus(self.timer.acquire,check_value,timeout=wait_time,run=False,settle_time=self.timer.integration_time.get())
+        status = SubscriptionStatus(self.timer.acquire,check_value,timeout=wait_time,run=False,settle_time=0.05)
         self.timer.acquire.set(1)
         return status
 
     def set_integration(self,t):
         self.timer.integration_time.set(t)
 
+    def set_exposure(self, t):
+        self.timer.integration_time.set(t)
+        
    # def __init__(self,*args,**kwargs):
     #    self.configuration_attrs = ['timer.integration_time']
     #    super().__init__(*args,**kwargs)
