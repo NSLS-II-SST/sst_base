@@ -1,11 +1,109 @@
 from ophyd import EpicsMotor, EpicsSignal, Signal, PositionerBase, Device
 from ophyd.pv_positioner import PVPositioner
 from ophyd import Component as Cpt
-from ophyd.status import wait as status_wait
+from ophyd.status import wait as status_wait, DeviceStatus
 import bluesky.plan_stubs as bps
 from sst_funcs.printing import boxed_text, colored, whisper
 from sst_base.positioners import DeadbandMixin
+from queue import Queue, Empty
+import time
+import threading
 
+class FlyerMixin:
+
+    def __init__(self, *args, **kwargs):
+        self._ready_to_fly = False
+        self._fly_move_st = None
+        self._default_time_resolution = 0.1
+        self._time_resolution = None
+        super().__init__(*args, **kwargs)
+        
+    # Flyer motor methods
+    def preflight(self, start, stop, speed=None, resolution=None):
+        self._old_velocity = self.velocity.get()
+        self._flyer_stop = stop
+        st = self.move(start)
+        if speed is None:
+            speed = self._old_velocity
+        self.velocity.set(speed)
+        if resolution is not None:
+            self._time_resolution = resolution/speed
+        else:
+            self._time_resolution = self._default_time_resolution
+        self._last_readback_value = start
+        self._ready_to_fly = True
+        return st
+
+    def fly(self):
+        """
+        Should be called after all detectors start flying, so that we don't lose data
+        """
+        if not self._ready_to_fly:
+            self._fly_move_st = DeviceStatus(device=self)
+            self._fly_move_st.set_finished(success=False)
+        else:
+            self._fly_move_st = self.move(self._flyer_stop, wait=False)
+            self._flying = True
+            self._ready_to_fly = False
+        return self._fly_move_st
+
+    def land(self):
+        if self._fly_move_st.done:
+            self.velocity.set(self._old_velocity)
+            self._flying = False
+            self._time_resolution = None
+
+    # Flyer detector methods for readback
+    def kickoff(self):
+        kickoff_st = DeviceStatus(device=self)
+        self._flyer_queue = Queue()
+        self._measuring = True
+        self._flyer_buffer = []
+        threading.Thread(target=self._aggregate, daemon=True).start()
+        #self.user_readback.subscribe(self._aggregate, run=False)
+        kickoff_st.set_finished()
+        return kickoff_st
+
+    def _aggregate(self):
+        name = self.user_readback.name
+        while self._measuring:
+            t = time.time()
+            rb = self.user_readback.read()
+            value = rb[name]['value']
+            ts = rb[name]['timestamp']
+            self._flyer_buffer.append(value)
+            event = dict()
+            event['time'] = t
+            event['data'] = dict()
+            event['timestamps'] = dict()
+            event['data'][name + '_raw'] = value
+            event['timestamps'][name + '_raw'] = ts
+            self._flyer_queue.put(event)
+            time.sleep(self._time_resolution)
+        return
+
+    def collect(self):
+        events = []
+        while True:
+            try:
+                e = self._flyer_queue.get_nowait()
+                events.append(e)
+            except Empty:
+                break
+        yield from events
+
+    def complete(self):
+        if self._measuring:
+            # self.user_readback.clear_sub(self._aggregate)
+            self._measuring = False
+        completion_status = DeviceStatus(self)
+        completion_status.set_finished()
+        self._time_resolution = None
+        return completion_status
+
+    def describe_collect(self):
+        dd = dict({self.user_readback.name + '_raw': {'source': self.user_readback.pvname, 'dtype': 'number', 'shape': []}})
+        return {self.name: dd}
 
 
 class FMBOEpicsMotor(EpicsMotor):
@@ -153,6 +251,8 @@ class DeadbandFMBOEpicsMotor(DeadbandMixin, FMBOEpicsMotor):
 class DeadbandEpicsMotor(DeadbandMixin, EpicsMotor):
     pass
 
+class FlyableMotor(EpicsMotor, FlyerMixin):
+    pass
 
 class PrettyMotor(EpicsMotor):
     def __init__(self, *args, **kwargs):
