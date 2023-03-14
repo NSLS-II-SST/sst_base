@@ -1,6 +1,7 @@
 from ophyd import Device, Component as Cpt, EpicsSignal, Signal, EpicsSignalRO
 from ophyd.status import DeviceStatus
 import threading
+from queue import Queue, Empty
 import time
 import numpy as np
 
@@ -17,6 +18,8 @@ class ScalarBase(Device):
 
     def __init__(self, *args, **kwargs):
         self._flying = False
+        self._measuring = False
+        self._reading = False
         self._flyer_buffer = []
         self._flyer_time_buffer = []
         super().__init__(*args, **kwargs)
@@ -25,33 +28,56 @@ class ScalarBase(Device):
         self._flyer_buffer = []
         self._flyer_time_buffer = []
         self._flyer_timestamp_buffer = []
+        self._flyer_queue = Queue()
         kickoff_st = DeviceStatus(device=self)
         kickoff_st.set_finished()
         self._flying = True
+        if not self._measuring:
+            self.target.subscribe(self._aggregate, run=False)
+            self._measuring = True
+
         return kickoff_st
         
     def stage(self):
         self._secret_buffer = []
         self._secret_time_buffer = []
+        self._reading = True
+        if not self._measuring:
+            self.target.subscribe(self._aggregate, run=False)
+            self._measuring = True
         return super().stage()
 
+    def unstage(self):
+        if self._measuring:
+            self.target.clear_sub(self._aggregate)
+            self._measuring = False
+        self._reading = False
+        return super().unstage()
+        
     def set_exposure(self, exp_time):
         self.exposure_time.set(exp_time)
 
     def _aggregate(self, value, **kwargs):
         scale_value = value*self.rescale.get() - self.offset.get()
         t = time.time()
-        self._buffer.append(scale_value)
-        self._time_buffer.append(t)
+        if self._reading:
+            self._buffer.append(scale_value)
+            self._time_buffer.append(t)
         if self._flying:
+            event = dict()
+            event['time'] = t
+            event['data'] = dict()
+            event['timestamps'] = dict()
+            event['data'][self.mean.name + '_raw'] = scale_value
+            event['timestamps'][self.mean.name + '_raw'] = kwargs.get('timestamp', t)
             self._flyer_buffer.append(scale_value)
             self._flyer_time_buffer.append(t)
             self._flyer_timestamp_buffer.append(kwargs.get('timestamp', t))
+            self._flyer_queue.put(event)
         
     def _acquire(self, status):
         self._buffer = []
         self._time_buffer = []
-        self.target.subscribe(self._aggregate, run=False)
         time.sleep(self.exposure_time.get())
         if len(self._buffer) == 0:
             ntry = 10
@@ -61,14 +87,15 @@ class ScalarBase(Device):
                 n += 1
                 if n > ntry:
                     break
-        self.target.clear_sub(self._aggregate)
-        self.mean.put(np.mean(self._buffer))
-        self.median.put(np.median(self._buffer))
-        self.std.put(np.std(self._buffer))
-        self.npts.put(len(self._buffer))
-        self.sum.put(np.sum(self._buffer))
-        self._secret_buffer.append(np.array(self._buffer))
-        self._secret_time_buffer.append(np.array(self._time_buffer))
+        buf = np.array(self._buffer)
+        tbuf = np.array(self._time_buffer[:len(buf)])
+        self.mean.put(np.mean(buf))
+        self.median.put(np.median(buf))
+        self.std.put(np.std(buf))
+        self.npts.put(len(buf))
+        self.sum.put(np.sum(buf))
+        self._secret_buffer.append(buf)
+        self._secret_time_buffer.append(tbuf)
         status.set_finished()
         return
         
@@ -78,22 +105,20 @@ class ScalarBase(Device):
         return status
 
     def collect(self):
-        t = time.time()
-        for n in range(len(self._flyer_buffer)):
-            v = self._flyer_buffer[n]
-            t = self._flyer_time_buffer[n]
-            ts = self._flyer_timestamp_buffer[n]
-            event = dict()
-            event['time'] = t
-            event['data'] = dict()
-            event['timestamps'] = dict()
-            event['data'][self.mean.name + '_raw'] = v
-            event['timestamps'][self.mean.name + '_raw'] = ts
-            yield event
-        return
+        events = []
+        while True:
+            try:
+                e = self._flyer_queue.get_nowait()
+                events.append(e)
+            except Empty:
+                break
+        yield from events
 
     def complete(self):
         self._flying = False
+        if self._measuring:
+            self.target.clear_sub(self._aggregate)
+            self._measuring = False
         completion_status = DeviceStatus(self)
         completion_status.set_finished()
         return completion_status
