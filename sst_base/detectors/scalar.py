@@ -37,7 +37,7 @@ class ScalarBase(Device):
             self._measuring = True
 
         return kickoff_st
-        
+
     def stage(self):
         self._secret_buffer = []
         self._secret_time_buffer = []
@@ -53,7 +53,7 @@ class ScalarBase(Device):
             self._measuring = False
         self._reading = False
         return super().unstage()
-        
+
     def set_exposure(self, exp_time):
         self.exposure_time.set(exp_time)
 
@@ -74,7 +74,7 @@ class ScalarBase(Device):
             self._flyer_time_buffer.append(t)
             self._flyer_timestamp_buffer.append(kwargs.get('timestamp', t))
             self._flyer_queue.put(event)
-        
+
     def _acquire(self, status):
         self._buffer = []
         self._time_buffer = []
@@ -98,7 +98,7 @@ class ScalarBase(Device):
         self._secret_time_buffer.append(tbuf)
         status.set_finished()
         return
-        
+
     def trigger(self):
         status = DeviceStatus(self)
         threading.Thread(target=self._acquire, args=(status,), daemon=True).start()
@@ -126,10 +126,11 @@ class ScalarBase(Device):
     def describe_collect(self):
         dd = dict({self.mean.name + '_raw': {'source': self.target.pvname, 'dtype': 'number', 'shape': []}})
         return {self.name: dd}
-        
+
+
 class I400SingleCh(ScalarBase):
     """Need to give full path to target PV during object creation"""
-    
+
     target = Cpt(EpicsSignal, "", kind="omitted")
 
 testScalar = I400SingleCh("XF:07ID-BI{DM2:I400-1}:IC1_MON", name="i400_scalar")
