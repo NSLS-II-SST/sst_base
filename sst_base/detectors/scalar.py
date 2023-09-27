@@ -41,6 +41,8 @@ class ScalarBase(Device):
     def stage(self):
         self._secret_buffer = []
         self._secret_time_buffer = []
+        self._buffer = []
+        self._time_buffer = []
         self._reading = True
         if not self._measuring:
             self.target.subscribe(self._aggregate, run=False)
@@ -89,11 +91,19 @@ class ScalarBase(Device):
                     break
         buf = np.array(self._buffer)
         tbuf = np.array(self._time_buffer[:len(buf)])
-        self.mean.put(np.mean(buf))
-        self.median.put(np.median(buf))
-        self.std.put(np.std(buf))
-        self.npts.put(len(buf))
-        self.sum.put(np.sum(buf))
+        if len(buf) == 0:
+            self.mean.put(np.nan)
+            self.median.put(np.nan)
+            self.std.put(np.nan)
+            self.npts.put(0)
+            self.sum.put(np.nan)
+        
+        else:
+            self.mean.put(np.mean(buf))
+            self.median.put(np.median(buf))
+            self.std.put(np.std(buf))
+            self.npts.put(len(buf))
+            self.sum.put(np.sum(buf))
         self._secret_buffer.append(buf)
         self._secret_time_buffer.append(tbuf)
         status.set_finished()

@@ -13,7 +13,7 @@ class EPS_Shutter(Device):
     # openval = 1  # normal shutter values, FS1 is reversed
     # closeval = 0
 
-    def __init__(self, *args, openval=1, closeval=1, shutter_type=None, **kwargs):
+    def __init__(self, *args, openval=1, closeval=0, shutter_type=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.openval = openval
         self.closeval = closeval
