@@ -68,8 +68,8 @@ class ScalarBase(Device):
             event['time'] = t
             event['data'] = dict()
             event['timestamps'] = dict()
-            event['data'][self.mean.name + '_raw'] = scale_value
-            event['timestamps'][self.mean.name + '_raw'] = kwargs.get('timestamp', t)
+            event['data'][self.name] = scale_value
+            event['timestamps'][self.name ] = kwargs.get('timestamp', t)
             self._flyer_buffer.append(scale_value)
             self._flyer_time_buffer.append(t)
             self._flyer_timestamp_buffer.append(kwargs.get('timestamp', t))
@@ -124,8 +124,8 @@ class ScalarBase(Device):
         return completion_status
 
     def describe_collect(self):
-        dd = dict({self.mean.name + '_raw': {'source': self.target.pvname, 'dtype': 'number', 'shape': []}})
-        return {self.name: dd}
+        dd = dict({self.name : {'source': self.target.pvname, 'dtype': 'number', 'shape': []}})
+        return {self.name+"_monitor": dd}
         
 class I400SingleCh(ScalarBase):
     """Need to give full path to target PV during object creation"""
