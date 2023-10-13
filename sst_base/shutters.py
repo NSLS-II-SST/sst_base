@@ -1,4 +1,5 @@
-from ophyd import Device, EpicsSignal, Component as Cpt
+from ophyd import Device, EpicsSignal, Component as Cpt, PVPositionerPC
+from ophyd.status import SubscriptionStatus
 import bluesky.plan_stubs as bps
 import time
 
@@ -9,12 +10,15 @@ class EPS_Shutter(Device):
     opn = Cpt(EpicsSignal, 'Cmd:Opn-Cmd')
     error = Cpt(EpicsSignal, 'Err-Sts')
     maxcount = 3
-    openval = 1  # normal shutter values, FS1 is reversed
-    closeval = 0
+    # openval = 1  # normal shutter values, FS1 is reversed
+    # closeval = 0
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, openval=1, closeval=0, shutter_type=None, **kwargs):
         super().__init__(*args, **kwargs)
-
+        self.openval = openval
+        self.closeval = closeval
+        self.shutter_type = shutter_type
+        
     def status(self):
         if self.state.get() == self.closeval:
             return 'closed'
@@ -82,3 +86,26 @@ class EPS_Shutter(Device):
             print(' Closed {}'.format(self.name))
         else:
             print('{} is closed'.format(self.name))
+
+
+class ShutterSet(PVPositionerPC):
+    """
+    Used for set of Diode box shutters
+    """
+    readback = Cpt(EpicsSignal, '-RB')
+    setpoint = Cpt(EpicsSignal, '-SP')
+
+    def set(self, value, *args, **kwargs):
+        if value is None:
+            saw_rise = False
+
+            def watcher(*, old_value, value, **kwargs):
+                nonlocal saw_rise
+                if value == 1:
+                    saw_rise = True
+                    return False
+                if value == 0 and saw_rise:
+                    return True
+            return SubscriptionStatus(self.readback, watcher)
+        else:
+            return super().set(value, *args, **kwargs)

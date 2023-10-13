@@ -19,15 +19,15 @@ class FlyerMixin:
         super().__init__(*args, **kwargs)
         
     # Flyer motor methods
-    def preflight(self, start, stop, speed=None, resolution=None):
+    def preflight(self, start, stop, speed=None, time_resolution=None):
         self._old_velocity = self.velocity.get()
         self._flyer_stop = stop
         st = self.move(start)
         if speed is None:
             speed = self._old_velocity
         self.velocity.set(speed)
-        if resolution is not None:
-            self._time_resolution = resolution/speed
+        if time_resolution is not None:
+            self._time_resolution = time_resolution
         else:
             self._time_resolution = self._default_time_resolution
         self._last_readback_value = start
