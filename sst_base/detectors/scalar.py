@@ -16,13 +16,15 @@ class ScalarBase(Device):
     rescale = Cpt(Signal, value=1, name="rescale", kind="config")
     offset = Cpt(Signal, value=0, name="offset", kind="config")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, rescale=1, **kwargs):
         self._flying = False
         self._measuring = False
         self._reading = False
         self._flyer_buffer = []
         self._flyer_time_buffer = []
         super().__init__(*args, **kwargs)
+        self.mean.name = self.name
+        self.rescale.set(rescale)
 
     def kickoff(self):
         self._flyer_buffer = []
