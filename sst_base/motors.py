@@ -76,8 +76,8 @@ class FlyerMixin:
             event['time'] = t
             event['data'] = dict()
             event['timestamps'] = dict()
-            event['data'][name + '_raw'] = value
-            event['timestamps'][name + '_raw'] = ts
+            event['data'][name] = value
+            event['timestamps'][name] = ts
             self._flyer_queue.put(event)
             time.sleep(self._time_resolution)
         return
@@ -102,8 +102,8 @@ class FlyerMixin:
         return completion_status
 
     def describe_collect(self):
-        dd = dict({self.user_readback.name + '_raw': {'source': self.user_readback.pvname, 'dtype': 'number', 'shape': []}})
-        return {self.name: dd}
+        dd = dict({self.user_readback.name: {'source': self.user_readback.pvname, 'dtype': 'number', 'shape': []}})
+        return {self.name+"_monitor": dd}
 
 
 class FMBOEpicsMotor(EpicsMotor):
@@ -318,3 +318,21 @@ class PrettyMotor(EpicsMotor):
 
 class PrettyMotorFMBO(FMBOEpicsMotor, PrettyMotor):
     pass
+
+
+class PrettyMotorFMBODeadband(DeadbandMixin, PrettyMotorFMBO):
+    pass
+
+
+class PrettyMotorDeadband(DeadbandMixin, PrettyMotor):
+    pass
+
+
+class PrettyMotorFMBODeadbandFlyer(FlyerMixin, PrettyMotorFMBODeadband):
+    pass
+
+
+class PrettyMotorDeadbandFlyer(FlyerMixin, PrettyMotorDeadband):
+    pass
+
+
