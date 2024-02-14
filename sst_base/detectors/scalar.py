@@ -1,4 +1,4 @@
-from ophyd import Device, Component as Cpt, EpicsSignal, Signal, EpicsSignalRO
+from ophyd import Device, Component as Cpt, EpicsSignal, Signal
 from ophyd.status import DeviceStatus
 import threading
 from queue import Queue, Empty
@@ -62,7 +62,7 @@ class ScalarBase(Device):
         self.exposure_time.set(exp_time)
 
     def _aggregate(self, value, **kwargs):
-        scale_value = value*self.rescale.get() - self.offset.get()
+        scale_value = value * self.rescale.get() - self.offset.get()
         t = time.time()
         if self._reading:
             self._buffer.append(scale_value)
@@ -73,7 +73,7 @@ class ScalarBase(Device):
             event['data'] = dict()
             event['timestamps'] = dict()
             event['data'][self.name] = scale_value
-            event['timestamps'][self.name ] = kwargs.get('timestamp', t)
+            event['timestamps'][self.name] = kwargs.get('timestamp', t)
             self._flyer_buffer.append(scale_value)
             self._flyer_time_buffer.append(t)
             self._flyer_timestamp_buffer.append(kwargs.get('timestamp', t))
@@ -87,7 +87,7 @@ class ScalarBase(Device):
             ntry = 10
             n = 0
             while len(self._buffer) < 1:
-                time.sleep(0.1*self.exposure_time.get())
+                time.sleep(0.1 * self.exposure_time.get())
                 n += 1
                 if n > ntry:
                     break
@@ -99,7 +99,7 @@ class ScalarBase(Device):
             self.std.put(np.nan)
             self.npts.put(0)
             self.sum.put(np.nan)
-        
+
         else:
             self.mean.put(np.mean(buf))
             self.median.put(np.median(buf))
@@ -137,19 +137,27 @@ class ScalarBase(Device):
 
     def describe_collect(self):
         dd = dict({self.name : {'source': self.target.pvname, 'dtype': 'number', 'shape': []}})
-        return {self.name+"_monitor": dd}
-       
+        return {self.name + "_monitor": dd}
+
+    def get_plot_hints(self):
+        return [self.mean.name]
+
+
 class I400SingleCh(ScalarBase):
     """Need to give full path to target PV during object creation"""
 
     target = Cpt(EpicsSignal, "", kind="omitted")
 
-testScalar = I400SingleCh("XF:07ID-BI{DM2:I400-1}:IC1_MON", name="i400_scalar")
+# testScalar = I400SingleCh("XF:07ID-BI{DM2:I400-1}:IC1_MON", name="i400_scalar")
+
 
 class ADCBuffer(ScalarBase):
+    """Convenience class for PXI Crate ADCs, just need to give base PV, Volt is auto-appended"""
     target = Cpt(EpicsSignal, "Volt", kind="omitted")
 
-testADC = ADCBuffer("XF:07ID-BI[ADC:1-Ch:1]", name='adc_test')
+
+# testADC = ADCBuffer("XF:07ID-BI[ADC:1-Ch:1]", name='adc_test')
+
 
 class ophScalar(ScalarBase):
     """Generic Scalar.  Give full path to target PV during object creation """
