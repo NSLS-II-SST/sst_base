@@ -24,7 +24,8 @@ class EpicsMCABase(Device):
         return {'fields': [f"{self.name}_{roi}" for roi in self.rois] + [self.counts.name]}
 
     def get_plot_hints(self):
-        h = [self.spectrum.name]
+        h = [{"signal": ['data', self.spectrum.name],
+              "axes": [['config', self.name, self.energies.name]]}]
         if len(self.roi_hints) > 0:
             h += [f"{self.name}_{roi}" for roi in self.roi_hints]
         else:
@@ -64,7 +65,7 @@ class EpicsMCABase(Device):
         if ulim is not None:
             self.ulim.set(ulim)
 
-        nbins = int((self.ulim.get() - self.llim.get())/res)
+        nbins = int((self.ulim.get() - self.llim.get()) / res)
         self.nbins.set(nbins)
 
     def describe(self):
@@ -82,7 +83,10 @@ class EpicsMCABase(Device):
         r = super().read()
         k = self.spectrum.name
         partialval = r[k]['value']
-        fullval = np.zeros(self.nbins.get())
+        full_len = self.nbins.get()
+        if len(partialval) > full_len:
+            partialval = partialval[:full_len]
+        fullval = np.zeros(full_len)
         fullval[:len(partialval)] = partialval
         r[k]['value'] = fullval
         e = self.energies.get()
