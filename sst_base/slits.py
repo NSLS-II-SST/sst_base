@@ -1,7 +1,7 @@
 from ophyd import EpicsMotor, PseudoPositioner, PseudoSingle, Component as Cpt
 from ophyd.pseudopos import pseudo_position_argument, real_position_argument
 from sst_funcs.printing import boxed_text
-
+from .motors import FMBOEpicsMotor
 
 class Slits(PseudoPositioner):
     def __init__(self, *args, **kwargs):
@@ -25,10 +25,10 @@ class Slits(PseudoPositioner):
     hcenter = Cpt(PseudoSingle, limits=(-10, 10), kind="normal")
 
     # The real (or physical) positioners:
-    top = Cpt(EpicsMotor, "T}Mtr", kind="normal")
-    bottom = Cpt(EpicsMotor, "B}Mtr", kind="normal")
-    inboard = Cpt(EpicsMotor, "I}Mtr", kind="normal")
-    outboard = Cpt(EpicsMotor, "O}Mtr", kind="normal")
+    top = Cpt(FMBOEpicsMotor, "T}Mtr", kind="normal")
+    bottom = Cpt(FMBOEpicsMotor, "B}Mtr", kind="normal")
+    inboard = Cpt(FMBOEpicsMotor, "I}Mtr", kind="normal")
+    outboard = Cpt(FMBOEpicsMotor, "O}Mtr", kind="normal")
 
     @pseudo_position_argument
     def forward(self, pseudo_pos):
