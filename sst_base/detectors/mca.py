@@ -24,8 +24,12 @@ class EpicsMCABase(Device):
         return {'fields': [f"{self.name}_{roi}" for roi in self.rois] + [self.counts.name]}
 
     def get_plot_hints(self):
+        if self.parent:
+            conf_name = self.parent.name
+        else:
+            conf_name = self.name
         h = [{"signal": ['data', self.spectrum.name],
-              "axes": [['config', self.name, self.energies.name]]}]
+              "axes": [['config', conf_name, self.energies.name]]}]
         if len(self.roi_hints) > 0:
             h += [f"{self.name}_{roi}" for roi in self.roi_hints]
         else:

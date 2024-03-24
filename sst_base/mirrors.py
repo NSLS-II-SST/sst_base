@@ -15,21 +15,21 @@ class HexapodMirror(Device):
 class FMBHexapodMirrorAxis(PVPositioner):
     readback = Cpt(EpicsSignalRO, 'Mtr_MON')
     setpoint = Cpt(EpicsSignal, 'Mtr_POS_SP')
-    actuate = FmtCpt(EpicsSignal, '{self.parent.prefix}}}MOVE_CMD.PROC')
+    actuate = FmtCpt(EpicsSignal, '{self.parent.prefix}}}MOVE_CMD.PROC', kind="omitted")
     actual_value = 1
-    stop_signal = FmtCpt(EpicsSignal, '{self.parent.prefix}}}STOP_CMD.PROC')
+    stop_signal = FmtCpt(EpicsSignal, '{self.parent.prefix}}}STOP_CMD.PROC', kind="omitted")
     stop_value = 1
-    done = FmtCpt(EpicsSignalRO, '{self.parent.prefix}}}BUSY_STS')
+    done = FmtCpt(EpicsSignalRO, '{self.parent.prefix}}}BUSY_STS', kind="omitted")
     done_value = 0
 
 class FMBHexapodMirrorAxisStandAlonePitch(DeadbandMixin, PVPositioner):
     readback = Cpt(EpicsSignalRO, "-Ax:P}Mtr_MON")
     setpoint = Cpt(EpicsSignal, "-Ax:P}Mtr_POS_SP")
-    actuate = Cpt(EpicsSignal, "}MOVE_CMD.PROC")
+    actuate = Cpt(EpicsSignal, "}MOVE_CMD.PROC", kind="omitted")
     actual_value = 1
-    stop_signal = Cpt(EpicsSignal, "}STOP_CMD.PROC")
+    stop_signal = Cpt(EpicsSignal, "}STOP_CMD.PROC", kind="omitted")
     stop_value = 1
-    done = Cpt(EpicsSignalRO, "}BUSY_STS")
+    done = Cpt(EpicsSignalRO, "}BUSY_STS", kind="omitted")
     done_value = 0
 
 class FMBHexapodMirror(Device):
