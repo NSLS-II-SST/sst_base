@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import requests
 import matplotlib.pyplot as plt
-from sst_funcs.printing import run_report
+from nbs_bl.printing import run_report
 
 
 run_report(__file__)

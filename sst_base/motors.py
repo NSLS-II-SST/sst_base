@@ -3,7 +3,7 @@ from ophyd.pv_positioner import PVPositioner
 from ophyd import Component as Cpt
 from ophyd.status import wait as status_wait, DeviceStatus
 import bluesky.plan_stubs as bps
-from sst_funcs.printing import boxed_text, colored, whisper
+from nbs_bl.printing import boxed_text, colored, whisper
 from sst_base.positioners import DeadbandMixin
 from queue import Queue, Empty
 import time

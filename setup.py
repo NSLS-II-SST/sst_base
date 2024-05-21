@@ -41,7 +41,7 @@ setup(
     long_description=readme,
     author="National Institute of Standards and Technology",
     author_email='charles.titus@nist.gov',
-    url='https://github.com/cjtitus/sst_base',
+    url='https://github.com/NSLS-II-SST/sst_base',
     python_requires='>={}'.format('.'.join(str(n) for n in min_version)),
     packages=find_packages(exclude=['docs', 'tests']),
     entry_points={
