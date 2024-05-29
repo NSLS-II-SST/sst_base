@@ -9,10 +9,10 @@ import numpy as np
 class ScalarBase(Device):
     exposure_time = Cpt(Signal, name="exposure_time", kind="config")
     mean = Cpt(Signal, name="", kind="hinted")
-    median = Cpt(Signal, name="median")
-    std = Cpt(Signal, name="std")
-    npts = Cpt(Signal, name="points")
-    sum = Cpt(Signal, name="sum")
+    median = Cpt(Signal, name="median", kind="omitted")
+    std = Cpt(Signal, name="std", kind="omitted")
+    npts = Cpt(Signal, name="points", kind="omitted")
+    sum = Cpt(Signal, name="sum", kind="omitted")
     rescale = Cpt(Signal, value=1, name="rescale", kind="config")
     offset = Cpt(Signal, value=0, name="offset", kind="config")
 

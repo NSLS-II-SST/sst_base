@@ -54,7 +54,7 @@ class DeadbandMixin(Device, PositionerBase):
                     pass
                     # print(f"{timestamp}: {self.name}, {value} not within {tolerance} of {setpoint}")
 
-            def clear_deadband(*args, timestamp, **kwargs):
+            def clear_deadband(*args, **kwargs):
                 # print(f"{timestamp}: Ran deadband clear for {self.name}")
                 self.clear_sub(check_deadband, event_type=self.SUB_READBACK)
 
