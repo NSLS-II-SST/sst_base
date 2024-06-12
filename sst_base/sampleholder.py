@@ -14,15 +14,15 @@ class Sample(Device):
     origin = Cpt(Signal, value="")
 
     def set(self, md):
-        self.sample_name.set(md['name'])
-        self.sample_id.set(md['sample_id'])
-        self.sample_desc.set(md['description'])
-        self.side.set(md['side'])
-        if md.get('origin', None) is None:
+        self.sample_name.set(md["name"])
+        self.sample_id.set(md["sample_id"])
+        self.sample_desc.set(md["description"])
+        self.side.set(md["side"])
+        if md.get("origin", None) is None:
             self.origin.kind = "omitted"
         else:
-            self.origin.set(md['origin'])
-            self.origin.kind = 'normal'
+            self.origin.set(md["origin"])
+            self.origin.kind = "normal"
         status = StatusBase()
         status.set_finished()
         return status
@@ -53,10 +53,9 @@ def make_two_sided_bar(width, height, thickness=0, parent=None):
     return [side1, side2]
 
 
-def make_regular_polygon(width, height, nsides, points=None,
-                         parent=None, invert=True):
+def make_regular_polygon(width, height, nsides, points=None, parent=None, invert=True):
     geometry = []
-    interior_angle = deg_to_rad(360.0/nsides)
+    interior_angle = deg_to_rad(360.0 / nsides)
     if invert:
         az = -1
     else:
@@ -77,16 +76,13 @@ def make_regular_polygon(width, height, nsides, points=None,
 
     def _newSideFromSide(side):
         prev_edges = side.real_edges(vec(0, 0, 0), 0)
-        new_vector = vec(np.cos(np.pi - interior_angle), 0,
-                         -np.sin(np.pi - interior_angle))
+        new_vector = vec(np.cos(np.pi - interior_angle), 0, -np.sin(np.pi - interior_angle))
         p1 = prev_edges[1]
         p2 = prev_edges[2]
-        p3 = side.frame_to_global(new_vector + side.edges[1], r=0,
-                                  rotation="global")
+        p3 = side.frame_to_global(new_vector + side.edges[1], r=0, rotation="global")
         return Panel(p1, p2, p3, width=width, height=height, parent=parent)
 
-    current_side = Panel(p1, p2, p3, width=width, height=height,
-                         parent=parent)
+    current_side = Panel(p1, p2, p3, width=width, height=height, parent=parent)
     geometry.append(current_side)
     new_sides = []
     for n in range(1, nsides):
@@ -104,7 +100,8 @@ class SampleHolder(Device):
     Consider adding manipulator to sampleholder so that
     we can just operate on the SampleHolder...
     """
-    sample = Cpt(Sample, kind='config')
+
+    sample = Cpt(Sample, kind="config")
 
     def __init__(self, *args, manipulator=None, geometry=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -157,17 +154,13 @@ class SampleHolder(Device):
         md = copy.deepcopy(self.sample_md[sample_id])
         return md
 
-    def _add_frame(self, frame, sample_id, name, side=-1, description="",
-                   origin='edge', **kwargs):
+    def _add_frame(self, frame, sample_id, name, side=-1, description="", origin="edge", **kwargs):
         md = {}
         md.update(kwargs)
-        _md = {"sample_id": sample_id,
-               "name": name,
-               "side": side,
-               "description": description}
+        _md = {"sample_id": f"{sample_id}", "name": name, "side": side, "description": description}
         md.update(_md)
-        self.sample_frames[sample_id] = frame
-        self.sample_md[sample_id] = md
+        self.sample_frames[f"{sample_id}"] = frame
+        self.sample_md[f"{sample_id}"] = md
 
     def add_geometry(self, geometry):
         """
@@ -194,29 +187,26 @@ class SampleHolder(Device):
         kwargs: additional keywords to use as sample metadata, such as description, cas, or other catalog number/info
         """
         if not self._has_geometry:
-            raise RuntimeError("Bar has no geometry loaded. "
-                               "Call load_geometry first")
+            raise RuntimeError("Bar has no geometry loaded. " "Call load_geometry first")
         if side > len(self.sides):
-            raise ValueError(f"Side {side} too large, bar only has"
-                             " {len(self.sides)} sides!")
+            raise ValueError(f"Side {side} too large, bar only has" " {len(self.sides)} sides!")
         s = self.sides[side - 1]
         frame = s.make_sample_frame(position, t=t)
         self._add_frame(frame, sample_id, name, side, **kwargs)
 
     def frame_to_beam(self, *args, **kwargs):
-        md = {'origin': self.sample.origin.get()}
+        md = {"origin": self.sample.origin.get()}
         md.update(kwargs)
         return self.current_frame.frame_to_beam(*args, **md)
 
     def beam_to_frame(self, *args, **kwargs):
-        md = {'origin': self.sample.origin.get()}
+        md = {"origin": self.sample.origin.get()}
         md.update(kwargs)
         return self.current_frame.beam_to_frame(*args, **md)
 
     def distance_to_beam(self, *args, **kwargs):
         if self._has_geometry:
-            distances = [side.distance_to_beam(*args)
-                         for side in self.sides]
+            distances = [side.distance_to_beam(*args) for side in self.sides]
             return np.min(distances)
         else:
             distance = self.current_frame.distance_to_beam(*args)
@@ -237,6 +227,7 @@ class SampleHolder(Device):
         print(f"Samples loaded on {self.name}:")
         for v in self.sample_md.values():
             print(f"{v['sample_id']}: {v['name']}")
+
 
 dummy_holder = SampleHolder(name="dummy_holder")
 dummy_geometry = make_regular_polygon(1, 1, 4)
