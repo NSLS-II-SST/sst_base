@@ -77,6 +77,7 @@ class EpicsMCABase(Device):
         k = self.spectrum.name
         d[k]['shape'] = [self.nbins.get()]
         d[k]['dtype'] = 'array'
+        d[k]['dims'] = [self.energies.name]
         for k in self.rois:
             key = self.name + "_" + k
             d[key] = {"dtype": "number", "shape": [], "source": key,
