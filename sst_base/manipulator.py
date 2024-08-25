@@ -5,6 +5,40 @@ from ophyd.pseudopos import (pseudo_position_argument, real_position_argument,
 from .sampleholder import dummy_holder
 from .geometry.linalg import vec
 from sst_base.positioners import PseudoSingle
+from sst_base.motors import FlyableMotor, PrettyMotor
+
+manip_origin = vec(0, 0, 464, 0)
+
+
+def manipulatorFactory4Ax(xPV, yPV, zPV, rPV):
+    class Manipulator(Manipulator4AxBase):
+        x = Cpt(FlyableMotor, xPV, name="x", kind='hinted')
+        y = Cpt(FlyableMotor, yPV,  name="y", kind='hinted')
+        z = Cpt(FlyableMotor, zPV,  name="z", kind='hinted')
+        r = Cpt(FlyableMotor, rPV, name="r", kind='hinted')
+
+    return Manipulator
+
+
+def ManipulatorBuilder(prefix, *, name, **kwargs):
+    Manipulator = manipulatorFactory4Ax("SampX}Mtr", "SampY}Mtr", "SampZ}Mtr", "SampTh}Mtr")
+    return Manipulator(None, prefix, origin=manip_origin, name=name, **kwargs)
+
+def ManipulatorBuilderNEXAFS(prefix, *, name, **kwargs):
+    Manipulator = manipulatorFactory4Ax("SampX}Mtr", "SampY}Mtr", "SampZ}Mtr", "SampRot}Mtr")
+    return Manipulator(None, prefix, origin=manip_origin, name=name, **kwargs)
+
+
+def manipulatorFactory1Ax(xPV):
+    class MultiMesh(Manipulator1AxBase):
+        x = Cpt(PrettyMotor, xPV, name="Multimesh")
+
+    return MultiMesh
+
+
+def MultiMeshBuilder(prefix, *, name, **kwargs):
+    MultiMesh = manipulatorFactory1Ax("MMesh}Mtr")
+    return MultiMesh(None, prefix, name=name, **kwargs)
 
 
 class ManipulatorBase(PseudoPositioner):

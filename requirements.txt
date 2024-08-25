@@ -1,4 +1,5 @@
 bluesky
 ophyd
 numpy
-nbs_bl
+nbs-core
+nbs-bl
