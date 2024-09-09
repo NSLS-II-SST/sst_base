@@ -14,14 +14,14 @@ class Sample(Device):
     origin = Cpt(Signal, value="")
 
     def set(self, md):
-        self.sample_name.set(md["name"])
-        self.sample_id.set(md["sample_id"])
-        self.sample_desc.set(md["description"])
-        self.side.set(md["side"])
+        self.sample_name.set(md["name"]).wait()
+        self.sample_id.set(md["sample_id"]).wait()
+        self.sample_desc.set(md["description"]).wait()
+        self.side.set(md["side"]).wait()
         if md.get("origin", None) is None:
             self.origin.kind = "omitted"
         else:
-            self.origin.set(md["origin"])
+            self.origin.set(md["origin"]).wait()
             self.origin.kind = "normal"
         status = StatusBase()
         status.set_finished()
