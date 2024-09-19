@@ -1,46 +1,71 @@
-from ophyd import PseudoPositioner, Device
+# from ophyd import PseudoPositioner, Device
 from ophyd import Component as Cpt
-from ophyd.pseudopos import (pseudo_position_argument, real_position_argument,
-                             _to_position_tuple)
-from .sampleholder import dummy_holder
-from .geometry.linalg import vec
-from sst_base.positioners import PseudoSingle
+
+# from ophyd.pseudopos import pseudo_position_argument, real_position_argument, _to_position_tuple
+# from .sampleholder import dummy_holder
+# from .geometry.linalg import vec
+# from sst_base.positioners import PseudoSingle
 from sst_base.motors import FlyableMotor, PrettyMotor
+from nbs_bl.sampleholders import Manipulator4AxBase, Manipulator1AxBase
+from nbs_bl.geometry.bars import Standard4SidedBar, Bar1d
 
-manip_origin = vec(0, 0, 464, 0)
+"""manip_origin = vec(0, 0, 464, 0)
 
 
-def manipulatorFactory4Ax(xPV, yPV, zPV, rPV):
-    class Manipulator(Manipulator4AxBase):
-        x = Cpt(FlyableMotor, xPV, name="x", kind='hinted')
-        y = Cpt(FlyableMotor, yPV,  name="y", kind='hinted')
-        z = Cpt(FlyableMotor, zPV,  name="z", kind='hinted')
-        r = Cpt(FlyableMotor, rPV, name="r", kind='hinted')
+def manipulatorTestFactory4Ax(xPV, yPV, zPV, rPV):
+    class Manipulator(Man4AxTest):
+        x = Cpt(FlyableMotor, xPV, name="x", kind="hinted")
+        y = Cpt(FlyableMotor, yPV, name="y", kind="hinted")
+        z = Cpt(FlyableMotor, zPV, name="z", kind="hinted")
+        r = Cpt(FlyableMotor, rPV, name="r", kind="hinted")
 
     return Manipulator
-
 
 def ManipulatorBuilder(prefix, *, name, **kwargs):
     Manipulator = manipulatorFactory4Ax("SampX}Mtr", "SampY}Mtr", "SampZ}Mtr", "SampTh}Mtr")
     return Manipulator(None, prefix, origin=manip_origin, name=name, **kwargs)
 
+"""
+
+
+def manipulatorFactory4Ax(xPV, yPV, zPV, rPV):
+    class Manipulator(Manipulator4AxBase):
+        x = Cpt(FlyableMotor, xPV, name="x", kind="hinted")
+        y = Cpt(FlyableMotor, yPV, name="y", kind="hinted")
+        z = Cpt(FlyableMotor, zPV, name="z", kind="hinted")
+        r = Cpt(FlyableMotor, rPV, name="r", kind="hinted")
+
+    return Manipulator
+
+
+def ManipulatorBuilder(prefix, *, name, **kwargs):
+    holder = Standard4SidedBar(24.5, 215)
+    origin = (0, 0, 464)
+    Manipulator = manipulatorFactory4Ax("SampX}Mtr", "SampY}Mtr", "SampZ}Mtr", "SampTh}Mtr")
+    return Manipulator(prefix, name=name, attachment_point=origin, holder=holder, **kwargs)
+
+
 def ManipulatorBuilderNEXAFS(prefix, *, name, **kwargs):
+    holder = Standard4SidedBar(24.5, 215)
+    origin = (0, 0, 464)
     Manipulator = manipulatorFactory4Ax("SampX}Mtr", "SampY}Mtr", "SampZ}Mtr", "SampRot}Mtr")
-    return Manipulator(None, prefix, origin=manip_origin, name=name, **kwargs)
+    return Manipulator(prefix, attachment_point=origin, name=name, holder=holder, **kwargs)
 
 
 def manipulatorFactory1Ax(xPV):
     class MultiMesh(Manipulator1AxBase):
-        x = Cpt(PrettyMotor, xPV, name="Multimesh")
+        axis = Cpt(PrettyMotor, xPV, name="Multimesh")
 
     return MultiMesh
 
 
 def MultiMeshBuilder(prefix, *, name, **kwargs):
     MultiMesh = manipulatorFactory1Ax("MMesh}Mtr")
-    return MultiMesh(None, prefix, name=name, **kwargs)
+    holder = Bar1d()
+    return MultiMesh(prefix, origin=0, name=name, holder=holder, **kwargs)
 
 
+'''
 class ManipulatorBase(PseudoPositioner):
     # Really need a discrete manipulator that can be set to
     # one of several sample positions. May just be a sampleholder
@@ -98,8 +123,7 @@ class ManipulatorBase(PseudoPositioner):
         return self.PseudoPosition(*pp)
 
     def to_pseudo_tuple(self, *args, **kwargs):
-        return _to_position_tuple(self.PseudoPosition, *args, **kwargs,
-                                  _cur=lambda: self.position)
+        return _to_position_tuple(self.PseudoPosition, *args, **kwargs, _cur=lambda: self.position)
 
     def distance_to_beam(self):
         """
@@ -137,6 +161,7 @@ class Manipulator4AxBaseOld(PseudoPositioner):
     coordinating motors. The SampleHolder and Sample have the logic
     for coordinate transformations.
     """
+
     sx = Cpt(PseudoSingle)
     sy = Cpt(PseudoSingle)
     sz = Cpt(PseudoSingle)
@@ -190,8 +215,7 @@ class Manipulator4AxBaseOld(PseudoPositioner):
         return self.PseudoPosition(sx=sx, sy=sy, sz=sz, sr=sr)
 
     def to_pseudo_tuple(self, *args, **kwargs):
-        return _to_position_tuple(self.PseudoPosition, *args, **kwargs,
-                                  _cur=lambda: self.position)
+        return _to_position_tuple(self.PseudoPosition, *args, **kwargs, _cur=lambda: self.position)
 
     def distance_to_beam(self):
         """
@@ -208,3 +232,4 @@ class Manipulator4AxBaseOld(PseudoPositioner):
         """
         x, y, z, r = self.manip_to_beam_frame(*self.real_position)
         return self.holder.sample_distance_to_beam(x, y, z, r)
+'''
