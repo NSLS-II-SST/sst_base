@@ -24,7 +24,7 @@ class ScalarBase(Device):
         self._flyer_time_buffer = []
         super().__init__(*args, **kwargs)
         self.mean.name = self.name
-        self.rescale.set(rescale)
+        self.rescale.set(rescale).wait(timeout=60)
 
     def kickoff(self):
         self._flyer_buffer = []
@@ -59,7 +59,7 @@ class ScalarBase(Device):
         return super().unstage()
 
     def set_exposure(self, exp_time):
-        self.exposure_time.set(exp_time)
+        self.exposure_time.set(exp_time).wait(timeout=60)
 
     def _aggregate(self, value, **kwargs):
         scale_value = value * self.rescale.get() - self.offset.get()

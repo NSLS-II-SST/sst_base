@@ -51,7 +51,7 @@ class EpicsMCABase(Device):
         self.roi_hints = set()
 
     def set_exposure(self, exp_time):
-        self.exposure_time.set(exp_time)
+        self.exposure_time.set(exp_time).wait(timeout=60)
 
     def trigger(self):
 
@@ -65,12 +65,12 @@ class EpicsMCABase(Device):
 
     def set_resolution(self, res, llim=None, ulim=None):
         if llim is not None:
-            self.llim.set(llim)
+            self.llim.set(llim).wait(timeout=60)
         if ulim is not None:
-            self.ulim.set(ulim)
+            self.ulim.set(ulim).wait(timeout=60)
 
         nbins = int((self.ulim.get() - self.llim.get()) / res)
-        self.nbins.set(nbins)
+        self.nbins.set(nbins).wait(timeout=60)
 
     def describe(self):
         d = super().describe()

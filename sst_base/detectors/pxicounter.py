@@ -28,10 +28,10 @@ class PXIScalar(Device):
         return status
 
     def set_integration(self,t):
-        self.timer.integration_time.set(t)
+        self.timer.integration_time.set(t).wait(timeout=60)
 
     def set_exposure(self, t):
-        self.timer.integration_time.set(t)
+        self.timer.integration_time.set(t).wait(timeout=60)
         
    # def __init__(self,*args,**kwargs):
     #    self.configuration_attrs = ['timer.integration_time']
