@@ -12,6 +12,7 @@ class EpicsMCABase(Device):
     ulim = Cpt(EpicsSignal, "ULIM", name="ulim", kind="config")
     nbins = Cpt(EpicsSignal, "NBINS", name="nbins", kind='config')
     energies = Cpt(EpicsSignalRO, "CENTERS", name="energies", kind='config')
+    make_cal = Cpt(EpicsSignal, "MAKE_CAL", name="make_cal", kind="omitted")
     rois = {}
     roi_hints = set()
 
