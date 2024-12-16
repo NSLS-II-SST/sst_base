@@ -1,0 +1,1 @@
+from .quadSlits import QuadSlitsModel
