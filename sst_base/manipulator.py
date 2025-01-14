@@ -5,8 +5,8 @@ from ophyd import Component as Cpt
 # from .sampleholder import dummy_holder
 # from .geometry.linalg import vec
 # from sst_base.positioners import PseudoSingle
-from sst_base.motors import FlyableMotor, PrettyMotor
-from nbs_bl.devices.sampleholders import Manipulator4AxBase, Manipulator1AxBase
+from nbs_bl.devices import FlyableMotor, Manipulator4AxBase, Manipulator1AxBase
+from sst_base.motors import PrettyMotor
 from nbs_bl.geometry.bars import Standard4SidedBar, Bar1d
 
 """manip_origin = vec(0, 0, 464, 0)

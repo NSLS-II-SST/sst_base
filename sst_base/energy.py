@@ -8,50 +8,49 @@ from ophyd import (
     SoftPositioner,
     Signal,
 )
-from ophyd import Component as Cpt
+from ophyd import Component as Cpt, Device
 import bluesky.plan_stubs as bps
 from ophyd.pseudopos import pseudo_position_argument, real_position_argument
-from ophyd.status import DeviceStatus, SubscriptionStatus
-import threading
-from queue import Queue, Empty
 import pathlib
 import numpy as np
 import xarray as xr
+from nbs_bl.printing import boxed_text, colored
+from sst_base.motors import PrettyMotorFMBO, FlyerMixin
+from nbs_bl.devices import DeadbandEpicsMotor, DeadbandMixin, PseudoSingle
+
 import time
-from sst_base.motors import PrettyMotorFMBO
-from nbs_bl.devices.motors import DeadbandEpicsMotor, DeadbandMixin, PseudoSingle
+from ophyd.status import DeviceStatus, SubscriptionStatus
+import threading
+
+from queue import Queue, Empty
 
 ##############################################################################################
 
 
-class UndulatorMotor(DeadbandEpicsMotor):
+class UndulatorMotor(FlyerMixin, DeadbandEpicsMotor):
     user_setpoint = Cpt(EpicsSignal, "-SP", limits=True)
-    # done = Cpt(EpicsSignalRO, ".MOVN")
-    # done_value = 0
 
 
 class EpuMode(PVPositionerPC):
-    setpoint = Cpt(EpicsSignal, "-SP", kind="normal")
+    setpoint = Cpt(EpicsSignal, "-SP", kind="config")
     readback = Cpt(EpicsSignal, "-RB", kind="normal")
 
 
-# epu_mode = EpicsSignal(
-#    "SR:C07-ID:G1A{SST1:1-Ax:Phase}Phs:Mode-SP", name="EPU 60 Mode", kind="normal"
-# )
 class FMB_Mono_Grating_Type(PVPositioner):
-    setpoint = Cpt(EpicsSignal, "_TYPE_SP", string=True)
-    readback = Cpt(EpicsSignal, "_TYPE_MON", string=True)
+    setpoint = Cpt(EpicsSignal, "_TYPE_SP", string=True, kind="config")
+    readback = Cpt(EpicsSignal, "_TYPE_MON", string=True, kind="config")
     actuate = Cpt(EpicsSignal, "_DCPL_CALC.PROC")
     enable = Cpt(EpicsSignal, "_ENA_CMD.PROC")
     kill = Cpt(EpicsSignal, "_KILL_CMD.PROC")
     home = Cpt(EpicsSignal, "_HOME_CMD.PROC")
     clear_encoder_loss = Cpt(EpicsSignal, "_ENC_LSS_CLR_CMD.PROC")
-    done = Cpt(EpicsSignal, "_AXIS_STS")
+    done = Cpt(EpicsSignal, "_AXIS_STS", kind="config")
 
 
-class Monochromator(DeadbandMixin, PVPositioner):
-    setpoint = Cpt(EpicsSignal, ":ENERGY_SP", kind="normal")
-    readback = Cpt(EpicsSignalRO, ":ENERGY_MON", kind="hinted")
+class Monochromator(FlyerMixin, DeadbandMixin, PVPositioner):
+    setpoint = Cpt(EpicsSignal, ":ENERGY_SP", kind="config")
+    readback = Cpt(EpicsSignalRO, ":ENERGY_MON", kind="config")
+    en_mon = Cpt(EpicsSignalRO, ":READBACK2.A", name="Energy", kind="hinted")
 
     grating = Cpt(PrettyMotorFMBO, "GrtP}Mtr", name="Mono Grating", kind="config")
     mirror2 = Cpt(PrettyMotorFMBO, "MirP}Mtr", name="Mono Mirror", kind="config")
@@ -60,32 +59,120 @@ class Monochromator(DeadbandMixin, PVPositioner):
     gratingx = Cpt(FMB_Mono_Grating_Type, "GrtX}Mtr", kind="config")
     mirror2x = Cpt(FMB_Mono_Grating_Type, "MirX}Mtr", kind="config")
 
-    Scan_Start_ev = Cpt(EpicsSignal, ":EVSTART_SP", name="MONO scan start energy", kind="config")
-    Scan_Stop_ev = Cpt(EpicsSignal, ":EVSTOP_SP", name="MONO scan stop energy", kind="config")
-    Scan_Speed_ev = Cpt(EpicsSignal, ":EVVELO_SP", name="MONO scan speed", kind="config")
-    Scan_Start = Cpt(EpicsSignal, ":START_CMD.PROC", name="MONO scan start command", kind="config")
-    Scan_Stop = Cpt(EpicsSignal, ":ENERGY_ST_CMD.PROC", name="MONO scan stop command", kind="config")
-
-    scanlock = Cpt(Signal, value=0, name="lock flag for during scans")
-    done = Cpt(EpicsSignalRO, ":ERDY_STS")
+    scanlock = Cpt(Signal, value=0, name="lock flag for during scans", kind="config")
+    done = Cpt(EpicsSignalRO, ":ERDY_STS", kind="config")
     done_value = 1
     stop_signal = Cpt(EpicsSignal, ":ENERGY_ST_CMD")
 
-    def _setup_move(self, position):
-        """Move and do not wait until motion is complete (asynchronous)"""
-        self.log.debug("%s.setpoint = %s", self.name, position)
-        # copy from pv_positioner, with wait changed to false
-        # possible problem with IOC not returning from a set
-        self.setpoint.put(position, wait=False)
-        if self.actuate is not None:
-            self.log.debug("%s.actuate = %s", self.name, self.actuate_value)
-            self.actuate.put(self.actuate_value, wait=False)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    # def _setup_move(self, position):
+    #     """Move and do not wait until motion is complete (asynchronous)"""
+    #     self.log.debug("%s.setpoint = %s", self.name, position)
+    #     # copy from pv_positioner, with wait changed to false
+    #     # possible problem with IOC not returning from a set
+    #     self.setpoint.put(position, wait=False)
+    #     if self.actuate is not None:
+    #         self.log.debug("%s.actuate = %s", self.name, self.actuate_value)
+    #         self.actuate.put(self.actuate_value, wait=False)
 
 
 # mono_en= Monochromator('XF:07ID1-OP{Mono:PGM1-Ax:', name='Monochromator Energy',kind='normal')
 
 
-class NewEnPos(PseudoPositioner):
+class FlyControl(Device):
+    undulator_dance_enable = Cpt(
+        EpicsSignal,
+        "MACROControl-RB",
+        write_pv="MACROControl-SP",
+        name="Enable Undulator Dance",
+    )
+    flymove_stop_ev = Cpt(EpicsSignal, "FlyMove-Mtr-SP", name="Energy scan stop energy", kind="config")
+    flymove_speed_ev = Cpt(EpicsSignal, "FlyMove-Speed-SP", name="Energy scan speed", kind="config")
+    flymove_start = Cpt(EpicsSignal, "FlyMove-Mtr-Go.PROC", name="Energy scan start command")
+    flymove_stop = Cpt(EpicsSignal, "FlyMove-Mtr.STOP", name="Energy scan stop command")
+    flymove_moving = Cpt(EpicsSignal, "FlyMove-Mtr.MOVN", name="en_flymove_moving")
+    scan_start_ev = Cpt(EpicsSignal, "EScanFirst-SP", name="en_scan_start", kind="config")
+    scan_stop_ev = Cpt(EpicsSignal, "EScanLast-SP", name="en_scan_stop", kind="config")
+    scan_speed_ev = Cpt(EpicsSignal, "EScan-Speed-SP", name="en_scan_speed", kind="config")
+    scan_trigger_width = Cpt(
+        EpicsSignal,
+        "EScanTriggerWidth-RB",
+        write_pv="EScanTriggerWidth-SP",
+        name="trigger_width",
+        kind="config",
+    )
+    scan_trigger_n = Cpt(
+        EpicsSignal,
+        "EScanNTriggers-RB",
+        write_pv="EScanNTriggers-SP",
+        name="num_triggers",
+        kind="config",
+    )
+    scan_start_go = Cpt(EpicsSignal, "FlyScan-Mtr-Go.PROC", name="scan_start")
+    scanning = Cpt(EpicsSignal, "FlyScan-Mtr.MOVN", name="scan_moving")
+
+    def enable_undulator_sync(self):
+        # Read status
+        status = self.undulator_dance_enable.get()
+
+        def check_value(*, old_value, value, **kwargs):
+            if int(value) & 4:
+                return True
+            else:
+                return False
+
+        print("turning on undulator dance mode")
+        st = SubscriptionStatus(self.undulator_dance_enable, check_value, run=True)
+        self.undulator_dance_enable.set(1).wait()
+        return st
+
+    def flymove(self, start, speed=5):
+        self.enable_undulator_sync().wait()
+        self.flymove_stop_ev.set(start).wait()
+        self.flymove_speed_ev.set(speed).wait()
+
+        def check_value(*old_value, value, **kwargs):
+            return old_value != 0 and value == 0
+
+        self.flymove_start.set(1).wait()
+        move_st = SubscriptionStatus(self.flymove_moving, check_value, run=False)
+        return move_st
+
+    def scan_setup(self, start, stop, speed):
+        self.scan_start_ev.set(start).wait()
+        self.scan_stop_ev.set(stop).wait()
+        self.scan_speed_ev.set(speed).wait()
+        scan_range = stop - start
+        self.scan_trigger_width.set(0.1).wait()
+        trig_width = self.scan_trigger_width.get()
+        # Not relevant yet, but required for scan
+        ntrig = np.abs(scan_range // (2 * trig_width))
+        print(f"number of triggers : {ntrig}")
+        self.scan_trigger_n.set(ntrig).wait()
+
+    def scan_start(self):
+        self.enable_undulator_sync().wait()
+        self.scan_start_go.set(1).wait()
+
+        def check_value(*, old_value, value, **kwargs):
+            if old_value != 0 and value == 0:
+                return True
+
+        fly_move_st = SubscriptionStatus(self.scanning, check_value, run=False)
+        return fly_move_st
+
+
+def EnPosFactory(prefix, *, name, beamline=None, rotation_motor_name="manipr", **kwargs):
+    if beamline is not None:
+        rotation_motor = beamline.devices[rotation_motor_name]
+    else:
+        rotation_motor = None
+    return EnPos(prefix, rotation_motor=rotation_motor, name=name, **kwargs)
+
+
+class EnPos(PseudoPositioner):
     """Energy pseudopositioner class.
     Parameters:
     -----------
@@ -93,163 +180,163 @@ class NewEnPos(PseudoPositioner):
 
     # synthetic axis
     energy = Cpt(PseudoSingle, kind="hinted", limits=(71, 2250), name="Beamline Energy")
-    polarization = Cpt(PseudoSingle, kind="config", limits=(-1, 180), name="X-ray Polarization")
+    polarization = Cpt(PseudoSingle, kind="normal", limits=(-1, 180), name="X-ray Polarization")
     sample_polarization = Cpt(PseudoSingle, kind="config", name="Sample X-ray polarization")
     # real motors
 
-    monoen = Cpt(Monochromator, "XF:07ID1-OP{Mono:PGM1-Ax:", kind="hinted", name="Mono Energy")
-    epugap = Cpt(UndulatorMotor, "SR:C07-ID:G1A{SST1:1-Ax:Gap}-Mtr", kind="config", name="EPU Gap")
-    epuphase = Cpt(UndulatorMotor, "SR:C07-ID:G1A{SST1:1-Ax:Phase}-Mtr", kind="config", name="EPU Phase")
-    # mir3Pitch = Cpt(FMBHexapodMirrorAxisStandAlonePitch,
-    #                "XF:07ID1-OP{Mir:M3ABC", kind="normal",
-    #                name="M3Pitch")
-    epumode = Cpt(EpuMode, "SR:C07-ID:G1A{SST1:1-Ax:Phase}Phs:Mode", name="EPU Mode", kind="config")
-    # _real = ['monoen'] # uncomment to cut EPU out of the real positioners and just use mono
+    monoen = Cpt(Monochromator, "XF:07ID1-OP{Mono:PGM1-Ax:", kind="config", name="Mono Energy")
+    epugap = Cpt(
+        UndulatorMotor,
+        "SR:C07-ID:G1A{SST1:1-Ax:Gap}-Mtr",
+        kind="config",
+        name="EPU Gap",
+    )
+    epuphase = Cpt(
+        UndulatorMotor,
+        "SR:C07-ID:G1A{SST1:1-Ax:Phase}-Mtr",
+        kind="config",
+        name="EPU Phase",
+    )
+    epumode = Cpt(
+        EpuMode,
+        "SR:C07-ID:G1A{SST1:1-Ax:Phase}Phs:Mode",
+        name="EPU Mode",
+        kind="config",
+    )
 
     sim_epu_mode = Cpt(Signal, value=0, name="dont interact with the real EPU", kind="config")
     scanlock = Cpt(Signal, value=0, name="Lock Harmonic, Pitch, Grating for scan", kind="config")
+    flycontrol = Cpt(FlyControl, "SR:C07-ID:G1A{SST1:1}", name="FlyscanControl", kind="config")
     harmonic = Cpt(Signal, value=1, name="EPU Harmonic", kind="config")
-    m3offset = Cpt(Signal, value=7.91, name="EPU Harmonic", kind="config")
+    offset_gap = Cpt(Signal, value=0, name="EPU Gap offset", kind="config")
     rotation_motor = None
-
-    def __init__(
-        self, a, rotation_motor=None, configpath=pathlib.Path(__file__).parent.absolute() / "config", **kwargs
-    ):
-        self.gap_fit = np.zeros((10, 10))
-        self.gap_fit[0][:] = [
-            889.981,
-            222.966,
-            -0.945368,
-            0.00290731,
-            -5.87973e-06,
-            7.80556e-09,
-            -6.69661e-12,
-            3.56679e-15,
-            -1.07195e-18,
-            1.39775e-22,
-        ]
-        self.gap_fit[1][:] = [
-            -51.6545,
-            -1.60757,
-            0.00914746,
-            -2.65003e-05,
-            4.46303e-08,
-            -4.8934e-11,
-            3.51531e-14,
-            -1.4802e-17,
-            2.70647e-21,
-            0,
-        ]
-        self.gap_fit[2][:] = [
-            9.74128,
-            0.0528884,
-            -0.000270428,
-            6.71135e-07,
-            -6.68204e-10,
-            2.71974e-13,
-            -2.82766e-17,
-            -3.77566e-21,
-            0,
-            0,
-        ]
-        self.gap_fit[3][:] = [
-            -2.94165,
-            -0.00110173,
-            3.13309e-06,
-            -1.21787e-08,
-            1.21638e-11,
-            -4.27216e-15,
-            3.59552e-19,
-            0,
-            0,
-            0,
-        ]
-        self.gap_fit[4][:] = [
-            0.19242,
-            2.19545e-05,
-            6.11159e-08,
-            4.21707e-11,
-            -6.84942e-14,
-            1.84302e-17,
-            0,
-            0,
-            0,
-            0,
-        ]
-        self.gap_fit[5][:] = [-0.00615458, -9.55015e-07, -1.28929e-09, 4.28363e-13, 3.26302e-17, 0, 0, 0, 0, 0]
-        self.gap_fit[6][:] = [0.000113341, 1.90112e-08, 6.92088e-12, -1.87659e-15, 0, 0, 0, 0, 0, 0]
-        self.gap_fit[7][:] = [-1.22095e-06, -1.5686e-10, -1.09857e-14, 0, 0, 0, 0, 0, 0, 0]
-        self.gap_fit[8][:] = [7.13593e-09, 4.69949e-13, 0, 0, 0, 0, 0, 0, 0, 0]
-        self.gap_fit[9][:] = [-1.74622e-11, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-
-        self.polphase = xr.load_dataarray(configpath / "polphase.nc")
-        self.phasepol = xr.DataArray(
-            data=self.polphase.pol,
-            coords={"phase": self.polphase.values},
-            dims={"phase"},
-        )
-        self.rotation_motor = rotation_motor
-
-        super().__init__(a, **kwargs)
-
-        self.epugap.tolerance.set(3)
-        self.epuphase.tolerance.set(10)
-        # self.mir3Pitch.tolerance.set(.01)
-        self.monoen.tolerance.set(0.01)
-        self._ready_to_fly = False
-        self._fly_move_st = None
-        self._default_time_resolution = 0.05
-        self._flyer_lag_ev = 0.1
-        self._flyer_gap_lead = 0.0
-        self._time_resolution = None
-        self._flying = False
 
     @pseudo_position_argument
     def forward(self, pseudo_pos):
         """Run a forward (pseudo -> real) calculation"""
-        # print('In forward')
-        epu_sim = self.sim_epu_mode.get()
-        if epu_sim:
-            ret = self.RealPosition(monoen=pseudo_pos.energy)
-        else:
-            ret = self.RealPosition(
-                epugap=self.gap(pseudo_pos.energy, pseudo_pos.polarization, self.scanlock.get(), epu_sim),
-                monoen=pseudo_pos.energy,
-                epuphase=abs(self.phase(pseudo_pos.energy, pseudo_pos.polarization, epu_sim)),
-                # mir3Pitch=self.m3pitchcalc(pseudo_pos.energy, self.scanlock.get()),
-                epumode=self.mode(pseudo_pos.polarization, epu_sim),
-                # harmonic=self.choose_harmonic(pseudo_pos.energy,pseudo_pos.polarization,self.scanlock.get())
-            )
-        # print('finished forward')
+        ret = self.RealPosition(
+            epugap=self.gap(
+                pseudo_pos.energy,
+                pseudo_pos.polarization,
+                self.scanlock.get(),
+                self.sim_epu_mode.get(),
+            ),
+            monoen=pseudo_pos.energy,
+            epuphase=abs(self.phase(pseudo_pos.energy, pseudo_pos.polarization, self.sim_epu_mode.get())),
+            epumode=self.mode(pseudo_pos.polarization, self.sim_epu_mode.get()),
+        )
         return ret
 
     @real_position_argument
     def inverse(self, real_pos):
         """Run an inverse (real -> pseudo) calculation"""
         # print('in Inverse')
-        epu_sim = self.sim_epu_mode.get()
-        if epu_sim:
-            ret = self.PseudoPosition(
-                energy=real_pos.monoen,
-                polarization=self.pol(self.epuphase.position, self.epumode.position),
-                sample_polarization=self.sample_pol(self.pol(self.epuphase.position, self.epumode.position)),
-            )
-        else:
-            ret = self.PseudoPosition(
-                energy=real_pos.monoen,
-                polarization=self.pol(real_pos.epuphase, real_pos.epumode),
-                sample_polarization=self.sample_pol(self.pol(real_pos.epuphase, real_pos.epumode)),
-            )
+        ret = self.PseudoPosition(
+            energy=real_pos.monoen,
+            polarization=self.pol(real_pos.epuphase, real_pos.epumode),
+            sample_polarization=self.sample_pol(self.pol(real_pos.epuphase, real_pos.epumode)),
+        )
         # print('Finished inverse')
         return ret
 
-    def _sequential_move(self, real_pos, timeout=None, **kwargs):
-        raise Exception("nope")
+    def where_sp(self):
+        return (
+            "Beamline Energy Setpoint : {}"
+            "\nMonochromator Readback : {}"
+            "\nEPU Gap Setpoint : {}"
+            "\nEPU Gap Readback : {}"
+            "\nEPU Phase Setpoint : {}"
+            "\nEPU Phase Readback : {}"
+            "\nEPU Mode Setpoint : {}"
+            "\nEPU Mode Readback : {}"
+            "\nGrating Setpoint : {}"
+            "\nGrating Readback : {}"
+            "\nGratingx Setpoint : {}"
+            "\nGratingx Readback : {}"
+            "\nMirror2 Setpoint : {}"
+            "\nMirror2 Readback : {}"
+            "\nMirror2x Setpoint : {}"
+            "\nMirror2x Readback : {}"
+            "\nCFF : {}"
+            "\nVLS : {}"
+        ).format(
+            colored(
+                "{:.2f}".format(self.monoen.setpoint.get()).rstrip("0").rstrip("."),
+                "yellow",
+            ),
+            colored(
+                "{:.2f}".format(self.monoen.readback.get()).rstrip("0").rstrip("."),
+                "yellow",
+            ),
+            colored(
+                "{:.2f}".format(self.epugap.user_setpoint.get()).rstrip("0").rstrip("."),
+                "yellow",
+            ),
+            colored(
+                "{:.2f}".format(self.epugap.user_readback.get()).rstrip("0").rstrip("."),
+                "yellow",
+            ),
+            colored(
+                "{:.2f}".format(self.epuphase.user_setpoint.get()).rstrip("0").rstrip("."),
+                "yellow",
+            ),
+            colored(
+                "{:.2f}".format(self.epuphase.user_readback.get()).rstrip("0").rstrip("."),
+                "yellow",
+            ),
+            colored(
+                "{:.2f}".format(self.epumode.setpoint.get()).rstrip("0").rstrip("."),
+                "yellow",
+            ),
+            colored(
+                "{:.2f}".format(self.epumode.readback.get()).rstrip("0").rstrip("."),
+                "yellow",
+            ),
+            colored(
+                "{:.2f}".format(self.monoen.grating.user_setpoint.get()).rstrip("0").rstrip("."),
+                "yellow",
+            ),
+            colored(
+                "{:.2f}".format(self.monoen.grating.user_readback.get()).rstrip("0").rstrip("."),
+                "yellow",
+            ),
+            colored(self.monoen.gratingx.setpoint.get(), "yellow"),
+            colored(self.monoen.gratingx.readback.get(), "yellow"),
+            colored(
+                "{:.2f}".format(self.monoen.mirror2.user_setpoint.get()).rstrip("0").rstrip("."),
+                "yellow",
+            ),
+            colored(
+                "{:.2f}".format(self.monoen.mirror2.user_readback.get()).rstrip("0").rstrip("."),
+                "yellow",
+            ),
+            colored(self.monoen.mirror2x.setpoint.get(), "yellow"),
+            colored(self.monoen.mirror2x.readback.get(), "yellow"),
+            colored("{:.2f}".format(self.monoen.cff.get()).rstrip("0").rstrip("."), "yellow"),
+            colored("{:.2f}".format(self.monoen.vls.get()).rstrip("0").rstrip("."), "yellow"),
+        )
 
-    def preflight(self, start, stop, speed, *args, time_resolution=None):
-        self.monoen.Scan_Start_ev.set(start)
-        self.monoen.Scan_Stop_ev.set(stop)
-        self.monoen.Scan_Speed_ev.set(speed)
+    def where(self):
+        return ("Beamline Energy : {}\nPolarization : {}\nSample Polarization : {}").format(
+            colored(
+                "{:.2f}".format(self.monoen.readback.get()).rstrip("0").rstrip("."),
+                "yellow",
+            ),
+            colored(
+                "{:.2f}".format(self.polarization.readback.get()).rstrip("0").rstrip("."),
+                "yellow",
+            ),
+            colored(
+                "{:.2f}".format(self.sample_polarization.readback.get()).rstrip("0").rstrip("."),
+                "yellow",
+            ),
+        )
+
+    def wh(self):
+        boxed_text(self.name + " location", self.where_sp(), "green", shrink=True)
+
+    def preflight(self, start, stop, speed, *args, locked=True, time_resolution=None):
+
         if len(args) > 0:
             if len(args) % 3 != 0:
                 raise ValueError(
@@ -269,7 +356,13 @@ class NewEnPos(PseudoPositioner):
         elif self._time_resolution is None:
             self._time_resolution = self._default_time_resolution
 
-        self.energy.set(start - 2).wait()
+        if locked:
+            self.scanlock.set(True).wait()
+
+        self.flycontrol.scan_setup(start, stop, speed)
+
+        # flymove currently unreliable
+        # self.flycontrol.flymove(start, speed=5).wait()
         self.energy.set(start).wait()
         self._last_mono_value = start
         self._mono_stop = stop
@@ -285,21 +378,23 @@ class NewEnPos(PseudoPositioner):
         else:
 
             def check_value(*, old_value, value, **kwargs):
-                if old_value != 1 and value == 1:
+                if old_value != 0 and value == 0:  # was moving, but not moving anymore
                     try:
+                        print("got to stopping point")
                         start, stop, speed = next(self.flight_segments)
-                        self.monoen.Scan_Start_ev.set(start)
-                        self.monoen.Scan_Stop_ev.set(stop)
-                        self.monoen.Scan_Speed_ev.set(speed)
-                        self.monoen.Scan_Start.set(1)
+                        self.flycontrol.scan_setup(start, stop, speed).wait()
+                        print(f"starting next step to {stop}eV at {speed}eV/sec")
+                        self.flycontrol.scan_start()
                         return False
                     except StopIteration:
                         return True
                 else:
                     return False
 
-            self._fly_move_st = SubscriptionStatus(self.monoen.done, check_value, run=False)
-            self.monoen.Scan_Start.set(1)
+            print("beginning the undulator dance")
+            # Need our own check_value that will keep flying until there are no more flight segments left
+            self._fly_move_st = SubscriptionStatus(self.flycontrol.scanning, check_value, run=False)
+            self.flycontrol.scan_start()
             self._flying = True
             self._ready_to_fly = False
         return self._fly_move_st
@@ -308,9 +403,13 @@ class NewEnPos(PseudoPositioner):
         if self._fly_move_st.done:
             self._flying = False
             self._time_resolution = None
+            self.scanlock.set(False).wait()
 
     def kickoff(self):
         kickoff_st = DeviceStatus(device=self)
+        if self._time_resolution is None:
+            self._time_resolution = self._default_time_resolution
+
         self._flyer_queue = Queue()
         self._measuring = True
         self._flyer_buffer = []
@@ -319,23 +418,23 @@ class NewEnPos(PseudoPositioner):
         return kickoff_st
 
     def _aggregate(self):
-        name = self.monoen.readback.name
+        name = "energy_readback"
         while self._measuring:
             rb = self.monoen.readback.read()
             t = time.time()
-            value = rb[name]["value"]
-            ts = rb[name]["timestamp"]
+            value = rb[self.monoen.readback.name]["value"]
+            ts = rb[self.monoen.readback.name]["timestamp"]
             self._flyer_buffer.append(value)
             event = dict()
             event["time"] = t
             event["data"] = dict()
             event["timestamps"] = dict()
-            event["data"][name + "_raw"] = value
-            event["timestamps"][name + "_raw"] = ts
+            event["data"][name] = value
+            event["timestamps"][name] = ts
             self._flyer_queue.put(event)
-            if abs(self._last_mono_value - value) > self._flyer_lag_ev:
-                self._last_mono_value = value
-                self.epugap.set(self.gap(value + self._flyer_gap_lead, self._flyer_pol, False))
+            # if abs(self._last_mono_value - value) > self._flyer_lag_ev:
+            #    self._last_mono_value = value
+            #    self.epugap.set(self.gap(value + self._flyer_gap_lead, self._flyer_pol, False))
             time.sleep(self._time_resolution)
         return
 
@@ -360,15 +459,257 @@ class NewEnPos(PseudoPositioner):
     def describe_collect(self):
         dd = dict(
             {
-                self.monoen.readback.name
-                + "_raw": {"source": self.monoen.readback.pvname, "dtype": "number", "shape": []}
+                "energy_readback": {
+                    "source": self.monoen.readback.pvname,
+                    "dtype": "number",
+                    "shape": [],
+                }
             }
         )
-        return {self.name: dd}
+        return {"energy_readback_monitor": dd}
 
     # end class methods, begin internal methods
 
     # begin LUT Functions
+
+    def __init__(
+        self,
+        a,
+        rotation_motor=None,
+        configpath=pathlib.Path(__file__).parent.absolute() / "config",
+        **kwargs,
+    ):
+        self.gap_fitnew = np.array(
+            [
+                [
+                    -2.02817540e03,
+                    3.02264723e02,
+                    -1.78252111e00,
+                    7.43668353e-03,
+                    -1.91232012e-05,
+                    2.51973358e-08,
+                    4.79962799e-12,
+                    -8.29186995e-14,
+                    1.57617047e-16,
+                    -1.59186547e-19,
+                    9.43016130e-23,
+                    -3.09532281e-26,
+                    4.36145287e-30,
+                ],
+                [
+                    4.03257973e-01,
+                    -1.16153798e-02,
+                    1.42259540e-04,
+                    -9.21569724e-07,
+                    3.64833617e-09,
+                    -9.41596905e-12,
+                    1.63464324e-14,
+                    -1.92640661e-17,
+                    1.52209377e-20,
+                    -7.72874330e-24,
+                    2.28187017e-27,
+                    -2.98088495e-31,
+                    0.00000000e00,
+                ],
+                [
+                    4.56475603e-05,
+                    -4.07999403e-07,
+                    1.18075497e-09,
+                    -2.87363757e-12,
+                    3.75535610e-15,
+                    3.29862492e-18,
+                    -1.94014184e-20,
+                    2.74619195e-23,
+                    -1.83395988e-26,
+                    5.77828602e-30,
+                    -6.21442519e-34,
+                    0.00000000e00,
+                    0.00000000e00,
+                ],
+                [
+                    -5.25493975e-08,
+                    9.13848518e-11,
+                    -8.89125498e-14,
+                    -7.70071244e-17,
+                    1.56845096e-19,
+                    2.27044971e-22,
+                    -3.84069721e-25,
+                    1.07113860e-28,
+                    6.45500669e-32,
+                    -3.56486225e-35,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                ],
+                [
+                    1.69412943e-11,
+                    -1.72741103e-14,
+                    2.32736978e-17,
+                    -1.27270356e-20,
+                    -2.28179895e-23,
+                    1.64992858e-26,
+                    5.41608428e-30,
+                    -6.86000848e-33,
+                    2.31195976e-36,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                ],
+                [
+                    -3.28740709e-15,
+                    1.72993353e-18,
+                    -1.95111611e-21,
+                    2.04503884e-24,
+                    1.86619961e-28,
+                    -8.41281283e-31,
+                    1.99741076e-34,
+                    -6.65135708e-38,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                ],
+                [
+                    4.12832071e-19,
+                    -1.08634915e-22,
+                    9.38953584e-26,
+                    -9.25160150e-29,
+                    2.47681044e-32,
+                    1.24161680e-35,
+                    1.18873213e-39,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                ],
+                [
+                    -3.46595227e-23,
+                    3.42794252e-27,
+                    -3.81112396e-30,
+                    1.81952044e-33,
+                    -8.72888305e-37,
+                    -1.72881705e-40,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                ],
+                [
+                    1.97641466e-27,
+                    2.15621764e-32,
+                    1.26835147e-34,
+                    -8.69314807e-39,
+                    1.16321066e-41,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                ],
+                [
+                    -7.55639549e-32,
+                    -5.20717157e-36,
+                    -2.61944925e-39,
+                    -1.53939901e-43,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                ],
+                [
+                    1.84709041e-36,
+                    1.46245833e-40,
+                    2.35251768e-44,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                ],
+                [
+                    -2.59793922e-41,
+                    -1.36029553e-45,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                ],
+                [
+                    1.59420902e-46,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                    0.00000000e00,
+                ],
+            ]
+        )
+
+        # values for the minimum energy as a function of angle polynomial 10th deg
+        # 80.934 ± 0.0698
+        # -0.91614 ± 0.0446
+        # 0.39635 ± 0.00925
+        # -0.020478 ± 0.000881
+        # 0.00069047 ± 4.54e-05
+        # -1.5413e-05 ± 1.37e-06
+        # 2.1448e-07 ± 2.49e-08
+        # -1.788e-09 ± 2.68e-10
+        # 8.162e-12 ± 1.57e-12
+        # -1.5545e-14 ± 3.88e-15
+
+        self.polphase = xr.load_dataarray(configpath / "polphase.nc")
+        self.phasepol = xr.DataArray(
+            data=self.polphase.pol,
+            coords={"phase": self.polphase.values},
+            dims={"phase"},
+        )
+        self.rotation_motor = rotation_motor
+        super().__init__(a, **kwargs)
+        self.epugap.tolerance.set(3).wait()
+        self.epuphase.tolerance.set(10).wait()
+        # self.mir3Pitch.tolerance.set(0.01)
+        self.monoen.tolerance.set(0.01).wait()
+        self._ready_to_fly = False
+        self._fly_move_st = None
+        self._default_time_resolution = 0.05
+        self._flyer_lag_ev = 0.1
+        self._flyer_gap_lead = 0.0
+        self._time_resolution = self._default_time_resolution
+        self._flying = False
 
     """
     def stage(self):
@@ -387,39 +728,27 @@ class NewEnPos(PseudoPositioner):
             # this might cause problems if someone else is moving the gap, we might move it back
             # but I think this is not a common reason for this mode
 
-        # self.harmonic.set(self.choose_harmonic(energy, pol, locked))
+        self.harmonic.set(self.choose_harmonic(energy, pol, locked)).wait()
         energy = energy / self.harmonic.get()
 
-        if pol == -1:
-            encalc = energy - 105.002
-            gap = 13979.0
-            gap += 82.857 * encalc**1
-            gap += -0.26294 * encalc**2
-            gap += 0.00090199 * encalc**3
-            gap += -2.3176e-06 * encalc**4
-            gap += 4.205e-09 * encalc**5
-            gap += -5.139e-12 * encalc**6
-            gap += 4.0034e-15 * encalc**7
-            gap += -1.7862e-18 * encalc**8
-            gap += 3.4687e-22 * encalc**9
-            return max(14000.0, min(100000.0, gap))
-        elif pol == -0.5:
-            encalc = energy - 104.996
-            gap = 14013.0
-            gap += 82.76 * encalc**1
-            gap += -0.26128 * encalc**2
-            gap += 0.00088353 * encalc**3
-            gap += -2.2149e-06 * encalc**4
-            gap += 3.8919e-09 * encalc**5
-            gap += -4.5887e-12 * encalc**6
-            gap += 3.4467e-15 * encalc**7
-            gap += -1.4851e-18 * encalc**8
-            gap += 2.795e-22 * encalc**9
-            return max(14000.0, min(100000.0, gap))
+        if (pol == -1) or (pol == -0.5):
+            encalc = energy
+            gap = 6202.6
+            gap += 74.094 * encalc**1
+            gap += 0.14654 * encalc**2
+            gap += -0.001609 * encalc**3
+            gap += 5.443e-06 * encalc**4
+            gap += -1.0023e-08 * encalc**5
+            gap += 1.1005e-11 * encalc**6
+            gap += -7.1779e-15 * encalc**7
+            gap += 2.5652e-18 * encalc**8
+            gap += -3.86e-22 * encalc**9
+
+            return max(14000.0, min(100000.0, gap)) + self.offset_gap.get()
         elif 0 <= pol <= 90:
-            return max(14000.0, min(100000.0, self.epu_gap(energy, pol)))
+            return max(14000.0, min(100000.0, self.epu_gap(energy, pol))) + self.offset_gap.get()
         elif 90 < pol <= 180:
-            return max(14000.0, min(100000.0, self.epu_gap(energy, 180.0 - pol)))
+            return max(14000.0, min(100000.0, self.epu_gap(energy, 180.0 - pol))) + self.offset_gap.get()
         else:
             return np.nan
 
@@ -430,12 +759,12 @@ class NewEnPos(PseudoPositioner):
         @param pol: polarization (valid between 0 and 90)
         @return: gap in microns
         """
-        x = float(en)
-        y = float(pol)
+        y = float(en)
+        x = float(self.phase(en, pol))
         z = 0.0
-        for i in np.arange(self.gap_fit.shape[0]):
-            for j in np.arange(self.gap_fit.shape[1]):
-                z += self.gap_fit[j, i] * (x**i) * (y**j)
+        for i in np.arange(self.gap_fitnew.shape[0]):
+            for j in np.arange(self.gap_fitnew.shape[1]):
+                z += self.gap_fitnew[j, i] * (x**j) * (y**i)
         return z
 
     def phase(self, en, pol, sim=0):
@@ -448,7 +777,10 @@ class NewEnPos(PseudoPositioner):
         elif pol == -0.5:
             return 15000
         elif 90 < pol <= 180:
-            return -min(29500.0, max(0.0, float(self.polphase.interp(pol=180 - pol, method="cubic"))))
+            return -min(
+                29500.0,
+                max(0.0, float(self.polphase.interp(pol=180 - pol, method="cubic"))),
+            )
         else:
             return min(29500.0, max(0.0, float(self.polphase.interp(pol=pol, method="cubic"))))
 
@@ -481,36 +813,11 @@ class NewEnPos(PseudoPositioner):
             return 2
 
     def sample_pol(self, pol):
-        if self.rotation_motor is not None:
-            th = self.rotation_motor.user_setpoint.get()
+        if self.rotation_motor is None:
+            th = 0
         else:
-            th = 45.0
+            th = self.rotation_motor.user_setpoint.get()
         return np.arccos(np.cos(pol * np.pi / 180) * np.sin(th * np.pi / 180)) * 180 / np.pi
-
-    def m3pitchcalc(self, energy, locked):
-        pitch = self.mir3Pitch.setpoint.get()
-        if locked:
-            return pitch
-        elif "1200" in self.monoen.gratingx.readback.get():
-            pitch = (
-                self.m3offset.get()
-                + 0.038807 * np.exp(-(energy - 100) / 91.942)
-                + 0.050123 * np.exp(-(energy - 100) / 1188.9)
-            )
-        elif "250l/mm" in self.monoen.gratingx.readback.get():
-            pitch = (
-                self.m3offset.get()
-                + 0.022665 * np.exp(-(energy - 90) / 37.746)
-                + 0.024897 * np.exp(-(energy - 90) / 450.9)
-            )
-        elif "RSoXS" in self.monoen.gratingx.readback.get():
-            pitch = (
-                self.m3offset.get()
-                - 0.017669 * np.exp(-(energy - 100) / 41.742)
-                - 0.068631 * np.exp(-(energy - 100) / 302.75)
-            )
-
-        return round(100 * pitch) / 100
 
     def choose_harmonic(self, energy, pol, locked):
         if locked:
