@@ -45,7 +45,7 @@ class SST1EnergyMonitor(QGroupBox):
 
         print("Adding grating motor monitor")
         if hasattr(energy, "grating_motor"):
-            vbox1.addWidget(MotorMonitor(energy.grating_motor, parent_model))
+            vbox1.addWidget(AutoMonitor(energy.grating_motor, parent_model))
 
         self.setLayout(vbox1)
         print("EnergyMonitor initialization complete")
@@ -143,13 +143,13 @@ class AdvancedEnergyControl(QGroupBox):
         print("Creating grating controls")
         hbox = QHBoxLayout()
         if hasattr(model, "grating_motor"):
-            hbox.addWidget(MotorMonitor(model.grating_motor, parent_model))
+            hbox.addWidget(AutoMonitor(model.grating_motor, parent_model))
 
             print("Setting up grating selection")
             cb = QComboBox()
             self.cb = cb
-            if hasattr(model.grating_motor.obj.setpoint, "enum_strs"):
-                for n, s in enumerate(model.grating_motor.obj.setpoint.enum_strs):
+            if hasattr(model.grating_motor.grating.setpoint, "enum_strs"):
+                for n, s in enumerate(model.grating_motor.grating.setpoint.enum_strs):
                     if s != "":
                         cb.addItem(s, n)
 
