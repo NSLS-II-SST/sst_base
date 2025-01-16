@@ -1,3 +1,40 @@
+[build-system]
+requires = ["setuptools", "wheel", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sst_base"
+dynamic = ["version", "dependencies"]
+description = "Common beamline classes and objects"
+readme = "README.rst"
+requires-python = ">=3.7"
+license = {text = "BSD (3-clause)"}
+authors = [
+    {name = "National Institute of Standards and Technology", email = "charles.titus@nist.gov"}
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+]
+
+[project.urls]
+homepage = "https://github.com/NSLS-II-SST/sst_base"
+
+[project.entry-points."nbs_gui.tabs"]
+sst-gui-samples = "sst_base.qt.tabs.sampleTab:SampleTab"
+
+[project.entry-points."nbs_gui.widgets"]
+sst-gui-header = "sst_base.qt.widgets.header:NSLSHeader"
+
+[tool.setuptools]
+packages = ["sst_base"]
+
+[tool.setuptools_scm]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
 [tool.black]
 line-length = 115
 include = '\.pyi?$'
@@ -12,8 +49,6 @@ exclude = '''
   | buck-out
   | build
   | dist
-
-  # The following are specific to Black, you probably don't want those.
   | blib2to3
   | tests/data
 )/
