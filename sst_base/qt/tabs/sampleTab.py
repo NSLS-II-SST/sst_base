@@ -17,11 +17,14 @@ from bluesky_queueserver_api import BFunc
 import ast
 import csv
 
+print("Importing SampleTab file")
+
 
 class SampleTab(QWidget):
     name = "Samples"
 
     def __init__(self, model, parent=None):
+        print("Initializing SampleTab")
         super().__init__(parent)
         self.layout = QVBoxLayout(self)
         self.model = model
@@ -173,9 +176,7 @@ class SampleWidget(QWidget):
         # Get the selected row
         selected_indexes = sample_view.selectedIndexes()
         if not selected_indexes:
-            QMessageBox.warning(
-                self, "No Selection", "Please select a sample to remove."
-            )
+            QMessageBox.warning(self, "No Selection", "Please select a sample to remove.")
             return
 
         # Get the row of the first selected cell
@@ -194,9 +195,7 @@ class SampleWidget(QWidget):
                 self.run_engine._client.function_execute(func)
                 print(f"Sample {sample_id} removed successfully")
             except Exception as e:
-                QMessageBox.critical(
-                    self, "Error", f"Failed to remove sample: {str(e)}"
-                )
+                QMessageBox.critical(self, "Error", f"Failed to remove sample: {str(e)}")
         else:
             QMessageBox.warning(
                 self,
@@ -236,9 +235,7 @@ class AddSampleDialog(QDialog):
         self.layout.addRow("Proposal (optional):", self.proposal_input)
 
         # Add OK and Cancel buttons
-        self.button_box = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
-        )
+        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
         self.layout.addRow(self.button_box)
@@ -248,9 +245,7 @@ class AddSampleDialog(QDialog):
             coordinates = ast.literal_eval(self.coordinates_input.text())
             if not isinstance(coordinates, (int, float, list)):
                 raise ValueError("Coordinates must be a number or a list of numbers")
-            if isinstance(coordinates, list) and not all(
-                isinstance(x, (int, float)) for x in coordinates
-            ):
+            if isinstance(coordinates, list) and not all(isinstance(x, (int, float)) for x in coordinates):
                 raise ValueError("All coordinates must be numbers")
         except (ValueError, SyntaxError) as e:
             print(f"Error parsing coordinates: {e}")
