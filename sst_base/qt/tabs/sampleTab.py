@@ -1,3 +1,5 @@
+print("Importing SampleTab file")
+
 from qtpy.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -16,8 +18,6 @@ from nbs_gui.tabs.sampleTab import QtSampleView, QtRedisSampleView
 from bluesky_queueserver_api import BFunc
 import ast
 import csv
-
-print("Importing SampleTab file")
 
 
 class SampleTab(QWidget):

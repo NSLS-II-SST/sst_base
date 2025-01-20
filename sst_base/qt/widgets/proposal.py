@@ -8,6 +8,7 @@ from qtpy.QtWidgets import (
     QFormLayout,
     QPushButton,
     QWidget,
+    QComboBox,
 )
 from nbs_gui.models import QtRedisJSONDict
 from redis_json_dict import RedisJSONDict
@@ -55,7 +56,7 @@ def authenticate(username, password):
         raise RuntimeError("All authentication servers are unavailable.")
 
 
-def sync_experiment(proposal_number, saf, username, password, redis_settings):
+def sync_experiment(proposal_number, beamline, saf, username, password, redis_settings):
     """
     Sync experiment data with Redis.
 
@@ -63,6 +64,10 @@ def sync_experiment(proposal_number, saf, username, password, redis_settings):
     ----------
     proposal_number : str
         Proposal number to sync
+    beamline : str
+        Beamline name
+    saf : str
+        Safety Approval Form number
     username : str
         Username for authentication
     password : str
@@ -76,17 +81,12 @@ def sync_experiment(proposal_number, saf, username, password, redis_settings):
         db=redis_settings.get("db", 0),
     )
     prefix = redis_settings.get("prefix", "")
-    beamline = "sst1"
     md = RedisJSONDict(redis_client=redis_client, prefix=prefix)
 
     new_data_session = f"pass-{proposal_number}"
 
-    if (new_data_session == md.get("data_session")) and (
-        username == md.get("username")
-    ):
-        warnings.warn(
-            f"Experiment {new_data_session} was already started by the same user."
-        )
+    if (new_data_session == md.get("data_session")) and (username == md.get("username")):
+        warnings.warn(f"Experiment {new_data_session} was already started by the same user.")
     else:
         proposal_data = validate_proposal(new_data_session, beamline)
         users = proposal_data.pop("users")
@@ -101,9 +101,7 @@ def sync_experiment(proposal_number, saf, username, password, redis_settings):
         pi_name = ""
         for user in users:
             if user.get("is_pi"):
-                pi_name = (
-                    f'{user.get("first_name", "")} {user.get("last_name", "")}'.strip()
-                )
+                pi_name = f'{user.get("first_name", "")} {user.get("last_name", "")}'.strip()
 
         md["data_session"] = new_data_session
         md["username"] = username
@@ -121,10 +119,11 @@ def sync_experiment(proposal_number, saf, username, password, redis_settings):
 
 
 class ProposalSyncExperiment(QDialog):
-    def __init__(self, title, redis_settings):
+    def __init__(self, title, redis_settings, beamline):
         super().__init__()
         self.setWindowTitle(title)
         self.redis_settings = redis_settings
+        self.beamline = beamline
         vbox = QVBoxLayout()
         button = QPushButton("Submit")
         button.clicked.connect(self.submit_form)
@@ -135,6 +134,15 @@ class ProposalSyncExperiment(QDialog):
         self.saf = QLineEdit()
         self.password = QLineEdit()
         self.password.setEchoMode(QLineEdit.Password)
+
+        # Add beamline selection if multiple beamlines provided
+        self.beamline_combo = None
+        if isinstance(beamline, (list, tuple)):
+            self.beamline_combo = QComboBox()
+            for bl in beamline:
+                self.beamline_combo.addItem(str(bl))
+            form.addRow("Beamline", self.beamline_combo)
+
         form.addRow("Username", self.username)
         form.addRow("Proposal ID", self.proposal)
         form.addRow("Safety Approval Form", self.saf)
@@ -149,8 +157,11 @@ class ProposalSyncExperiment(QDialog):
         saf = self.saf.text()
         password = self.password.text()
 
+        # Get selected beamline if combo box exists
+        selected_beamline = self.beamline_combo.currentText() if self.beamline_combo is not None else self.beamline
+
         print(f"Authenticating {username} and {proposal}")
-        sync_experiment(proposal, saf, username, password, self.redis_settings)
+        sync_experiment(proposal, selected_beamline, saf, username, password, self.redis_settings)
 
 
 class RedisProposalBox(RedisStatusBox):
@@ -162,9 +173,9 @@ class RedisProposalBox(RedisStatusBox):
     def __init__(self, user_status, parent=None):
         # Get Redis settings from beamline config
         print("RedisProposalBox init")
-        redis_settings = (
-            SETTINGS.beamline_config.get("settings", {}).get("redis", {}).get("md", {})
-        )
+        redis_settings = SETTINGS.beamline_config.get("settings", {}).get("redis", {}).get("md", {})
+        beamline = SETTINGS.beamline_config.get("settings", {}).get("beamline", "sst1")
+        endstation = SETTINGS.beamline_config.get("settings", {}).get("endstation", "nexafs")
         print(f"Got redis settings {redis_settings}")
         if not redis_settings:
             print("Warning: No Redis settings found for proposal metadata")
@@ -193,6 +204,7 @@ class RedisProposalBox(RedisStatusBox):
 
         # Store settings for proposal sync
         self.redis_settings = redis_settings
+        self.beamline = beamline
         print("RedisProposalBox init done")
 
     def get_display_data(self):
@@ -232,5 +244,5 @@ class ProposalStatus(QWidget):
         self.setLayout(vbox)
 
     def push_button(self):
-        dlg = ProposalSyncExperiment("New Proposal", self.proposal_box.redis_settings)
+        dlg = ProposalSyncExperiment("New Proposal", self.proposal_box.redis_settings, self.proposal_box.beamline)
         dlg.exec()
