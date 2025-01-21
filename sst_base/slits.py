@@ -31,10 +31,6 @@ class QuadSlitsBase(PseudoPositioner):
         boxed_text(self.name, self.where(), "cyan")
 
     # The pseudo positioner axes:
-    vsize = Cpt(PseudoSingle, limits=(-1, 20), kind="hinted")
-    vcenter = Cpt(PseudoSingle, limits=(-10, 10), kind="normal")
-    hsize = Cpt(PseudoSingle, limits=(-1, 20), kind="hinted")
-    hcenter = Cpt(PseudoSingle, limits=(-10, 10), kind="normal")
 
     @pseudo_position_argument
     def forward(self, pseudo_pos):
@@ -86,6 +82,11 @@ class QuadSlits(QuadSlitsBase):
     Quad slits implementation using standard EpicsMotors.
     """
 
+    vsize = Cpt(PseudoSingle, limits=(-1, 20), kind="hinted")
+    vcenter = Cpt(PseudoSingle, limits=(-10, 10), kind="normal")
+    hsize = Cpt(PseudoSingle, limits=(-1, 20), kind="hinted")
+    hcenter = Cpt(PseudoSingle, limits=(-10, 10), kind="normal")
+
     # The real (or physical) positioners:
     top = Cpt(EpicsMotor, "T}Mtr", kind="normal")
     bottom = Cpt(EpicsMotor, "B}Mtr", kind="normal")
@@ -98,8 +99,51 @@ class FMBOQuadSlits(QuadSlitsBase):
     Quad slits implementation using FMBOEpicsMotors.
     """
 
+    vsize = Cpt(PseudoSingle, limits=(-1, 20), kind="hinted")
+    vcenter = Cpt(PseudoSingle, limits=(-10, 10), kind="normal")
+    hsize = Cpt(PseudoSingle, limits=(-1, 20), kind="hinted")
+    hcenter = Cpt(PseudoSingle, limits=(-10, 10), kind="normal")
+
     # The real (or physical) positioners:
     top = Cpt(FMBOEpicsMotor, "T}Mtr", kind="normal")
     bottom = Cpt(FMBOEpicsMotor, "B}Mtr", kind="normal")
     inboard = Cpt(FMBOEpicsMotor, "I}Mtr", kind="normal")
     outboard = Cpt(FMBOEpicsMotor, "O}Mtr", kind="normal")
+
+
+def QuadSlitsLimitFactory(*args, limits={}, **kwargs):
+    _limits = {"vsize": (-1, 20), "hsize": (-1, 20), "vcenter": (-10, 10), "hcenter": (-10, 10)}
+    _limits.update(limits)
+
+    class QuadSlits(QuadSlitsBase):
+
+        vsize = Cpt(PseudoSingle, limits=_limits["vsize"], kind="hinted")
+        vcenter = Cpt(PseudoSingle, limits=_limits["vcenter"], kind="normal")
+        hsize = Cpt(PseudoSingle, limits=_limits["hsize"], kind="hinted")
+        hcenter = Cpt(PseudoSingle, limits=_limits["hcenter"], kind="normal")
+
+        top = Cpt(EpicsMotor, "T}Mtr", kind="normal")
+        bottom = Cpt(EpicsMotor, "B}Mtr", kind="normal")
+        inboard = Cpt(EpicsMotor, "I}Mtr", kind="normal")
+        outboard = Cpt(EpicsMotor, "O}Mtr", kind="normal")
+
+    return QuadSlits(*args, **kwargs)
+
+
+def FMBOQuadSlitsLimitFactory(*args, limits={}, **kwargs):
+    _limits = {"vsize": (-1, 20), "hsize": (-1, 20), "vcenter": (-10, 10), "hcenter": (-10, 10)}
+    _limits.update(limits)
+
+    class FMBOQuadSlits(QuadSlitsBase):
+
+        vsize = Cpt(PseudoSingle, limits=_limits["vsize"], kind="hinted")
+        vcenter = Cpt(PseudoSingle, limits=_limits["vcenter"], kind="normal")
+        hsize = Cpt(PseudoSingle, limits=_limits["hsize"], kind="hinted")
+        hcenter = Cpt(PseudoSingle, limits=_limits["hcenter"], kind="normal")
+
+        top = Cpt(FMBOEpicsMotor, "T}Mtr", kind="normal")
+        bottom = Cpt(FMBOEpicsMotor, "B}Mtr", kind="normal")
+        inboard = Cpt(FMBOEpicsMotor, "I}Mtr", kind="normal")
+        outboard = Cpt(FMBOEpicsMotor, "O}Mtr", kind="normal")
+
+    return FMBOQuadSlits(*args, **kwargs)
