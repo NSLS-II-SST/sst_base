@@ -18,6 +18,7 @@ from nbs_gui.tabs.sampleTab import QtSampleView, QtRedisSampleView
 from bluesky_queueserver_api import BFunc
 import ast
 import csv
+from qtpy.QtCore import Qt
 
 
 class SampleTab(QWidget):
@@ -33,7 +34,7 @@ class SampleTab(QWidget):
 
         # self.sample_view = QtSampleView(model, parent=self)
         print("Making SampleWidget")
-        self.new_sample = SampleWidget(model, parent)
+        self.new_sample = SampleWidget(model, parent=self)
         self.layout.addWidget(self.new_sample)
         self.layout.addWidget(self.sample_view)
 
@@ -94,7 +95,16 @@ class SampleWidget(QWidget):
     def add_sample(self):
         dialog = AddSampleDialog(self)
         if dialog.exec_() == QDialog.Accepted:
-            sample_info = dialog.get_sample_info()
+            try:
+                sample_info = dialog.get_sample_info()
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "Sample Info Error",
+                    f"Failed to get sample info: {str(e)}",
+                    QMessageBox.Ok,
+                )
+                return
             print(f"Adding sample: {sample_info}")
 
             # Create a BFunc to call the add_sample function in queueserver
@@ -181,12 +191,11 @@ class SampleWidget(QWidget):
 
         # Get the row of the first selected cell
         selected_row = selected_indexes[0].row()
+        model = sample_view.model()  # Gets the current model (table or proxy)
 
-        # Get the sample ID from the model
-        sample_ids = list(sample_view.tableModel._data.keys())
-        if selected_row < len(sample_ids):
-            sample_id = sample_ids[selected_row]
-
+        # Get the sample ID from the model using the vertical header data
+        sample_id = model.headerData(selected_row, Qt.Vertical, Qt.DisplayRole)
+        if sample_id:
             # Create a BFunc to call remove_sample
             func = BFunc("remove_sample", sample_id)
 
@@ -229,7 +238,7 @@ class AddSampleDialog(QDialog):
         self.layout.addRow("Sample Name:", self.name_input)
         self.layout.addRow("Sample ID:", self.id_input)
         self.layout.addRow("Description:", self.description_input)
-        self.layout.addRow("Manipulator X,Y,Z,R:", self.coordinates_input)
+        self.layout.addRow("Position [X,Y,Z,R]", self.coordinates_input)
         # self.layout.addRow("Side:", self.side_input)
         # self.layout.addRow("Thickness:", self.thickness_input)
         self.layout.addRow("Proposal (optional):", self.proposal_input)
@@ -248,16 +257,16 @@ class AddSampleDialog(QDialog):
             if isinstance(coordinates, list) and not all(isinstance(x, (int, float)) for x in coordinates):
                 raise ValueError("All coordinates must be numbers")
         except (ValueError, SyntaxError) as e:
-            print(f"Error parsing coordinates: {e}")
-            coordinates = None
+            print(f"Error, could not parse {coordinates} as list: {e}")
+            raise e
 
         info = {
             "name": self.name_input.text(),
             "id": self.id_input.text(),
             "description": self.description_input.text(),
             "coordinates": coordinates,
-            "side": self.side_input.value(),
-            "thickness": self.thickness_input.value(),
+            # "side": self.side_input.value(),
+            # "thickness": self.thickness_input.value(),
         }
         prop_id = self.proposal_input.text()
         if prop_id != "":
