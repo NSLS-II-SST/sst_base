@@ -34,6 +34,8 @@ class SST1EnergyModel:
         self.cff = PVModel(obj.monoen.cff.name, obj.monoen.cff, group=group, long_name=f"{name} CFF")
         self.group = group
         self.label = long_name
+        self.real_motors = []
+        self.real_motors.extend(self.energy.real_motors)
         for key, value in kwargs.items():
             setattr(self, key, value)
         print("Done Initializing Energy")
