@@ -15,7 +15,7 @@ import pathlib
 import numpy as np
 import xarray as xr
 from nbs_bl.printing import boxed_text, colored
-from sst_base.motors import PrettyMotorFMBO, FlyerMixin
+from sst_base.motors import PrettyMotorFMBO, FlyerMixin, PrettyMotorFMBODeadbandFlyer
 from nbs_bl.devices import DeadbandEpicsMotor, DeadbandMixin, PseudoSingle
 
 import time
@@ -52,8 +52,8 @@ class Monochromator(FlyerMixin, DeadbandMixin, PVPositioner):
     readback = Cpt(EpicsSignalRO, ":ENERGY_MON", kind="config")
     en_mon = Cpt(EpicsSignalRO, ":READBACK2.A", name="Energy", kind="hinted")
 
-    grating = Cpt(PrettyMotorFMBO, "GrtP}Mtr", name="Mono Grating", kind="config")
-    mirror2 = Cpt(PrettyMotorFMBO, "MirP}Mtr", name="Mono Mirror", kind="config")
+    grating = Cpt(PrettyMotorFMBODeadbandFlyer, "GrtP}Mtr", name="Mono Grating", kind="config")
+    mirror2 = Cpt(PrettyMotorFMBODeadbandFlyer, "MirP}Mtr", name="Mono Mirror", kind="config")
     cff = Cpt(EpicsSignal, ":CFF_SP", name="Mono CFF", kind="config", auto_monitor=True)
     vls = Cpt(EpicsSignal, ":VLS_B2.A", name="Mono VLS", kind="config", auto_monitor=True)
     gratingx = Cpt(FMB_Mono_Grating_Type, "GrtX}Mtr", kind="config")
