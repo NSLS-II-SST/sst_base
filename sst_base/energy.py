@@ -67,15 +67,17 @@ class Monochromator(FlyerMixin, DeadbandMixin, PVPositioner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    # def _setup_move(self, position):
-    #     """Move and do not wait until motion is complete (asynchronous)"""
-    #     self.log.debug("%s.setpoint = %s", self.name, position)
-    #     # copy from pv_positioner, with wait changed to false
-    #     # possible problem with IOC not returning from a set
-    #     self.setpoint.put(position, wait=False)
-    #     if self.actuate is not None:
-    #         self.log.debug("%s.actuate = %s", self.name, self.actuate_value)
-    #         self.actuate.put(self.actuate_value, wait=False)
+    def _setup_move(self, position):
+        """Move and do not wait until motion is complete (asynchronous)
+        Required so that mono moves do not wait unintentionally, as setpoint
+        put will not return until motor has finished moving"""
+        self.log.debug("%s.setpoint = %s", self.name, position)
+        # copy from pv_positioner, with wait changed to false
+        # possible problem with IOC not returning from a set
+        self.setpoint.put(position, wait=False)
+        if self.actuate is not None:
+            self.log.debug("%s.actuate = %s", self.name, self.actuate_value)
+            self.actuate.put(self.actuate_value, wait=False)
 
 
 # mono_en= Monochromator('XF:07ID1-OP{Mono:PGM1-Ax:', name='Monochromator Energy',kind='normal')
@@ -699,7 +701,7 @@ class EnPos(PseudoPositioner):
         )
         self.rotation_motor = rotation_motor
         super().__init__(a, **kwargs)
-        self.epugap.tolerance.set(3).wait()
+        self.epugap.tolerance.set(0.5).wait()
         self.epuphase.tolerance.set(10).wait()
         # self.mir3Pitch.tolerance.set(0.01)
         self.monoen.tolerance.set(0.01).wait()
