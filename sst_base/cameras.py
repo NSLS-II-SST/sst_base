@@ -12,23 +12,33 @@ from ophyd import (
     ProsilicaDetectorCam,
     ColorConvPlugin,
 )
-from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite
+from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite, new_short_uid
 from ophyd import Component as Cpt
 from nslsii.ad33 import SingleTriggerV33, StatsPluginV33
 from nbs_bl.beamline import GLOBAL_BEAMLINE as bl
 from os.path import join
+import os
+from datetime import datetime
 
 
 class TIFFPluginWithProposalDirectory(TIFFPlugin, FileStoreTIFFIterativeWrite):
     """Add this as a component to detectors that write TIFFs."""
 
-    def __init__(self, *args, md, camera_name, write_template="%Y/%m/%d/", **kwargs):
-        write_path_template = f"/nsls2/data/sst/proposals/{md['cycle']}/{md['data_session']}/assets/{camera_name}"
-        write_path_template = join(write_path_template, write_template)
-        super().__init__(*args, write_path_template=write_path_template, **kwargs)
+    def __init__(self, *args, md, camera_name, write_path_template="/nsls2/data/sst/proposals", date_template="%Y/%m/%d/", **kwargs):
+        super().__init__(*args, write_path_template="", root=write_path_template, **kwargs)
         self.md = md
         self.camera_name = camera_name
-        self.write_template = write_template
+        self.date_template = date_template
+
+    def make_filename(self):
+        proposal_path = f"{self.md['cycle']}/{self.md['data_session']}/assets/{self.camera_name}"
+        write_path = join(self.write_path_template, proposal_path, self.date_template)
+        filename = datetime.now().strftime("%Y-%m-%dT%H-%M-%S-%f")
+        formatter = datetime.now().strftime
+        write_path = formatter(write_path)
+        read_path = write_path
+        return filename, read_path, write_path
+"""
 
     @property
     def read_path_template(self):
@@ -37,6 +47,12 @@ class TIFFPluginWithProposalDirectory(TIFFPlugin, FileStoreTIFFIterativeWrite):
         )
         self._read_path_template = join(self._read_path_template, self.write_template)
         return super().read_path_template
+
+    @read_path_template.setter
+    def read_path_template(self, val):
+        if val is not None:
+            val = join(val, "")
+        self._read_path_template = val
 
     @property
     def write_path_template(self):
@@ -47,6 +63,12 @@ class TIFFPluginWithProposalDirectory(TIFFPlugin, FileStoreTIFFIterativeWrite):
 
         return super().write_path_template
 
+    @write_path_template.setter
+    def write_path_template(self, val):
+        if val is not None:
+            val = join(val, "")
+        self._write_path_template = val
+
     @property
     def reg_root(self):
         self._root = (
@@ -54,6 +76,13 @@ class TIFFPluginWithProposalDirectory(TIFFPlugin, FileStoreTIFFIterativeWrite):
         )
         return super().reg_root
 
+    @reg_root.setter
+    def reg_root(self, val):
+        if val is not None:
+            val = join(val, "")
+        else:
+            val = os.path.sep
+        self._root = val"""
 
 class TIFFPluginEnsuredOff(TIFFPlugin):
     """Add this as a component to detectors that do not write TIFFs."""
@@ -134,7 +163,7 @@ class StandardProsilicaV33(SingleTriggerV33, ProsilicaDetector):
         return {"fields": [self.stats1.total.name]}
 
 
-def StandardProsilicaWithTIFFFactory(*args, camera_name="", write_template="%Y/%m/%d/", **kwargs):
+def StandardProsilicaWithTIFFFactory(*args, camera_name="", date_template="%Y/%m/%d/", **kwargs):
 
     class StandardProsilicaWithTIFF(StandardProsilica):
         tiff = Cpt(
@@ -142,13 +171,13 @@ def StandardProsilicaWithTIFFFactory(*args, camera_name="", write_template="%Y/%
             suffix="TIFF1:",
             md=bl.md,
             camera_name=camera_name,
-            write_template=write_template,
+            date_template=date_template,
         )
 
     return StandardProsilicaWithTIFF(*args, **kwargs)
 
 
-def StandardProsilicaWithTIFFV33Factory(*args, camera_name="", write_template="%Y/%m/%d/", **kwargs):
+def StandardProsilicaWithTIFFV33Factory(*args, camera_name="", date_template="%Y/%m/%d/", **kwargs):
 
     class StandardProsilicaWithTIFFV33(StandardProsilicaV33):
         tiff = Cpt(
@@ -156,13 +185,13 @@ def StandardProsilicaWithTIFFV33Factory(*args, camera_name="", write_template="%
             suffix="TIFF1:",
             md=bl.md,
             camera_name=camera_name,
-            write_template=write_template,
+            date_template=date_template,
         )
 
     return StandardProsilicaWithTIFFV33(*args, **kwargs)
 
 
-def ColorProsilicaWithTIFFV33Factory(*args, camera_name="", write_template="%Y/%m/%d/", **kwargs):
+def ColorProsilicaWithTIFFV33Factory(*args, camera_name="", date_template="%Y/%m/%d/", **kwargs):
 
     class ColorProsilicaWithTIFFV33(StandardProsilicaV33):
         tiff = Cpt(
@@ -170,7 +199,7 @@ def ColorProsilicaWithTIFFV33Factory(*args, camera_name="", write_template="%Y/%
             suffix="TIFF1:",
             md=bl.md,
             camera_name=camera_name,
-            write_template=write_template,
+            date_template=date_template,
         )
 
         def describe(self):

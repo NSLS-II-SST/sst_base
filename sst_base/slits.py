@@ -83,15 +83,15 @@ class QuadSlits(QuadSlitsBase):
     """
 
     vsize = Cpt(PseudoSingle, limits=(-1, 20), kind="hinted")
-    vcenter = Cpt(PseudoSingle, limits=(-10, 10), kind="normal")
+    vcenter = Cpt(PseudoSingle, limits=(-10, 10), kind="hinted")
     hsize = Cpt(PseudoSingle, limits=(-1, 20), kind="hinted")
-    hcenter = Cpt(PseudoSingle, limits=(-10, 10), kind="normal")
+    hcenter = Cpt(PseudoSingle, limits=(-10, 10), kind="hinted")
 
     # The real (or physical) positioners:
-    top = Cpt(EpicsMotor, "T}Mtr", kind="normal")
-    bottom = Cpt(EpicsMotor, "B}Mtr", kind="normal")
-    inboard = Cpt(EpicsMotor, "I}Mtr", kind="normal")
-    outboard = Cpt(EpicsMotor, "O}Mtr", kind="normal")
+    top = Cpt(EpicsMotor, "T}Mtr", kind="hinted")
+    bottom = Cpt(EpicsMotor, "B}Mtr", kind="hinted")
+    inboard = Cpt(EpicsMotor, "I}Mtr", kind="hinted")
+    outboard = Cpt(EpicsMotor, "O}Mtr", kind="hinted")
 
 
 class FMBOQuadSlits(QuadSlitsBase):
@@ -100,15 +100,15 @@ class FMBOQuadSlits(QuadSlitsBase):
     """
 
     vsize = Cpt(PseudoSingle, limits=(-1, 20), kind="hinted")
-    vcenter = Cpt(PseudoSingle, limits=(-10, 10), kind="normal")
+    vcenter = Cpt(PseudoSingle, limits=(-10, 10), kind="hinted")
     hsize = Cpt(PseudoSingle, limits=(-1, 20), kind="hinted")
-    hcenter = Cpt(PseudoSingle, limits=(-10, 10), kind="normal")
+    hcenter = Cpt(PseudoSingle, limits=(-10, 10), kind="hinted")
 
     # The real (or physical) positioners:
-    top = Cpt(FMBOEpicsMotor, "T}Mtr", kind="normal")
-    bottom = Cpt(FMBOEpicsMotor, "B}Mtr", kind="normal")
-    inboard = Cpt(FMBOEpicsMotor, "I}Mtr", kind="normal")
-    outboard = Cpt(FMBOEpicsMotor, "O}Mtr", kind="normal")
+    top = Cpt(FMBOEpicsMotor, "T}Mtr", kind="hinted")
+    bottom = Cpt(FMBOEpicsMotor, "B}Mtr", kind="hinted")
+    inboard = Cpt(FMBOEpicsMotor, "I}Mtr", kind="hinted")
+    outboard = Cpt(FMBOEpicsMotor, "O}Mtr", kind="hinted")
 
 
 def QuadSlitsLimitFactory(*args, limits={}, **kwargs):
@@ -118,14 +118,14 @@ def QuadSlitsLimitFactory(*args, limits={}, **kwargs):
     class QuadSlits(QuadSlitsBase):
 
         vsize = Cpt(PseudoSingle, limits=_limits["vsize"], kind="hinted")
-        vcenter = Cpt(PseudoSingle, limits=_limits["vcenter"], kind="normal")
+        vcenter = Cpt(PseudoSingle, limits=_limits["vcenter"], kind="hinted")
         hsize = Cpt(PseudoSingle, limits=_limits["hsize"], kind="hinted")
-        hcenter = Cpt(PseudoSingle, limits=_limits["hcenter"], kind="normal")
+        hcenter = Cpt(PseudoSingle, limits=_limits["hcenter"], kind="hinted")
 
-        top = Cpt(EpicsMotor, "T}Mtr", kind="normal")
-        bottom = Cpt(EpicsMotor, "B}Mtr", kind="normal")
-        inboard = Cpt(EpicsMotor, "I}Mtr", kind="normal")
-        outboard = Cpt(EpicsMotor, "O}Mtr", kind="normal")
+        top = Cpt(EpicsMotor, "T}Mtr", kind="hinted")
+        bottom = Cpt(EpicsMotor, "B}Mtr", kind="hinted")
+        inboard = Cpt(EpicsMotor, "I}Mtr", kind="hinted")
+        outboard = Cpt(EpicsMotor, "O}Mtr", kind="hinted")
 
     return QuadSlits(*args, **kwargs)
 
@@ -137,13 +137,13 @@ def FMBOQuadSlitsLimitFactory(*args, limits={}, **kwargs):
     class FMBOQuadSlits(QuadSlitsBase):
 
         vsize = Cpt(PseudoSingle, limits=_limits["vsize"], kind="hinted")
-        vcenter = Cpt(PseudoSingle, limits=_limits["vcenter"], kind="normal")
+        vcenter = Cpt(PseudoSingle, limits=_limits["vcenter"], kind="hinted")
         hsize = Cpt(PseudoSingle, limits=_limits["hsize"], kind="hinted")
-        hcenter = Cpt(PseudoSingle, limits=_limits["hcenter"], kind="normal")
+        hcenter = Cpt(PseudoSingle, limits=_limits["hcenter"], kind="hinted")
 
-        top = Cpt(FMBOEpicsMotor, "T}Mtr", kind="normal")
-        bottom = Cpt(FMBOEpicsMotor, "B}Mtr", kind="normal")
-        inboard = Cpt(FMBOEpicsMotor, "I}Mtr", kind="normal")
-        outboard = Cpt(FMBOEpicsMotor, "O}Mtr", kind="normal")
+        top = Cpt(FMBOEpicsMotor, "T}Mtr", kind="hinted")
+        bottom = Cpt(FMBOEpicsMotor, "B}Mtr", kind="hinted")
+        inboard = Cpt(FMBOEpicsMotor, "I}Mtr", kind="hinted")
+        outboard = Cpt(FMBOEpicsMotor, "O}Mtr", kind="hinted")
 
     return FMBOQuadSlits(*args, **kwargs)
