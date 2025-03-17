@@ -1,3 +1,6 @@
+import itertools
+from pathlib import PurePath
+
 from ophyd import (
     ProsilicaDetector,
     SingleTrigger,
@@ -11,8 +14,9 @@ from ophyd import (
     OverlayPlugin,
     ProsilicaDetectorCam,
     ColorConvPlugin,
+    Signal
 )
-from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite, new_short_uid
+from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite, resource_factory
 from ophyd import Component as Cpt
 from nslsii.ad33 import SingleTriggerV33, StatsPluginV33
 from nbs_bl.beamline import GLOBAL_BEAMLINE as bl
@@ -21,14 +25,46 @@ import os
 from datetime import datetime
 
 
+class ExternalFileReference(Signal):
+    """
+    A pure software signal where a Device can stash a datum_id.
+    For example, it can store timestamps from HDF5 files. It needs
+    a `shape` because an HDF5 file can store multiple frames which
+    have multiple timestamps.
+    """
+    def __init__(self, *args, shape, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.shape = shape
+
+    def describe(self):
+        res = super().describe()
+        res[self.name].update(
+            dict(external="FILESTORE:", dtype="array", shape=self.shape)
+        )
+        return res
+
+
 class TIFFPluginWithProposalDirectory(TIFFPlugin, FileStoreTIFFIterativeWrite):
     """Add this as a component to detectors that write TIFFs."""
+
+    # Captures the datum id for hte timestamp recorded in the TIFF file
+    time_stamp = Cpt(ExternalFileReference, value="", kind="normal", shape=[])
 
     def __init__(self, *args, md, camera_name, write_path_template="/nsls2/data/sst/proposals", date_template="%Y/%m/%d/", **kwargs):
         super().__init__(*args, write_path_template="", root=write_path_template, **kwargs)
         self.md = md
         self.camera_name = camera_name
         self.date_template = date_template
+
+        # Setup for timestamping using the detector
+        self._ts_datum_factory = None
+        self._ts_resource_uid = ""
+        self._ts_counter = None
+
+    def stage(self):
+        # Start the timestamp counter
+        self._ts_counter = itertools.count()
+        return super().stage()
 
     def make_filename(self):
         proposal_path = f"{self.md['cycle']}/{self.md['data_session']}/assets/{self.camera_name}"
@@ -38,6 +74,38 @@ class TIFFPluginWithProposalDirectory(TIFFPlugin, FileStoreTIFFIterativeWrite):
         write_path = formatter(write_path)
         read_path = write_path
         return filename, read_path, write_path
+
+    def _generate_resource(self, resource_kwargs):
+        super()._generate_resource(resource_kwargs)
+        fn = PurePath(self._fn).relative_to(self.reg_root)
+
+        # Update the shape that describe() will report
+        # Multiple images will have multiple timestamps
+        self.time_stamp.shape = [self.get_frames_per_point()]
+
+        # Query for the AD_TIFF_TS timestamp
+        resource, self._ts_datum_factory = resource_factory(
+            spec="AD_TIFF_TS",
+            root=str(self.reg_root),
+            resource_path=str(fn),
+            resource_kwargs=resource_kwargs,
+            path_semantics=self.path_semantics,
+        )
+
+        self._ts_resource_uid = resource["uid"]
+        self._asset_docs_cache.append(("resource", resource))
+
+    def generate_datum(self, key, timestamp, datum_kwargs):
+        ret = super().generate_datum(key, timestamp, datum_kwargs)
+        datum_kwargs = datum_kwargs or {}
+        datum_kwargs.update({"point_number": next(self._ts_counter)})
+        datum = self._ts_datum_factory(datum_kwargs)
+        datum_id = datum["datum_id"]
+
+        self._asset_docs_cache.append(("datum", datum))
+
+        self.time_stamp.put(datum_id)
+        return ret
 """
 
     @property
