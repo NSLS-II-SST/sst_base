@@ -25,7 +25,7 @@ class PXIScalar(Device):
             return old_value == 1 and value == 0
 
         def override_status(status):
-            print(f"override timer for {self.name}")
+            
             if not status.done:
                 print("Override PXIScalar timeout")
                 status.check_value(old_value=1, value=0)

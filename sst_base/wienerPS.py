@@ -48,14 +48,14 @@ class WienerPSChannel(PVPositionerComparator):
 
     # Internal done signal
 
-    def __init__(self, *args, max_voltage=6000, pos_polarity=True, **kwargs):
+    def __init__(self, *args, max_voltage=6000, pos_polarity=True, tolerance=0.1, **kwargs):
         if pos_polarity:
             limits = (0, np.abs(max_voltage))
         else:
             limits = (-np.abs(max_voltage), np.abs(max_voltage))
         super().__init__(*args, limits=limits, egu="V", **kwargs)
         self._done = 1
-        self._tolerance = 0.01  # 1% tolerance for considering move complete
+        self._tolerance = tolerance  # 1% tolerance for considering move complete
         self._pos_polarity = pos_polarity
         # Subscribe to readback changes to update done state
 
@@ -134,14 +134,14 @@ def WienerPSFactory(
         ch_name = locals()[f"lvch{i}"]
         if ch_name is not None:
             safe_name = sanitize_name(ch_name)
-            components[f"lv_{safe_name}"] = Cpt(WienerPSChannel, f"-LV-u{i}}}", pos_polarity=False, kind="normal")
+            components[f"neg_{safe_name}"] = Cpt(WienerPSChannel, f"-LV:u{i}}}", pos_polarity=False, kind="normal")
 
     # Add HV channels as components
     for i in range(8):
         ch_name = locals()[f"hvch{i}"]
         if ch_name is not None:
             safe_name = sanitize_name(ch_name)
-            components[f"hv_{safe_name}"] = Cpt(WienerPSChannel, f"-HV-u30{i}}}", kind="normal")
+            components[f"pos_{safe_name}"] = Cpt(WienerPSChannel, f"-HV:u30{i}}}", kind="normal")
 
     # Create a new WienerPS class with the components
     ps = type(
