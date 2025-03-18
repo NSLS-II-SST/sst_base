@@ -24,10 +24,11 @@ class PXIScalar(Device):
 
         def override_status(status):
             if not status.done:
+                print("Override PXIScalar timeout")
                 status.check_value(old_value=1, value=0)
                 
-        wait_time = self.timer.integration_time.get()+0.5
-        timeout_time = wait_time + 0.5
+        wait_time = self.timer.integration_time.get()+1
+        timeout_time = wait_time + 5
         # Somehow need a soft timeout that doesn't fail but just goes ahead
         status = SubscriptionStatus(self.timer.acquire,check_value,timeout=timeout_time,run=False,settle_time=0.05)
         soft_timeout = threading.Timer(wait_time, override_status, args=[status])
