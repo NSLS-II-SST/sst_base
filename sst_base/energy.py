@@ -183,20 +183,20 @@ class EnPos(PseudoPositioner):
     # synthetic axis
     energy = Cpt(PseudoSingle, kind="hinted", limits=(71, 2250), name="Beamline Energy")
     polarization = Cpt(PseudoSingle, kind="normal", limits=(-1, 180), name="X-ray Polarization")
-    sample_polarization = Cpt(PseudoSingle, kind="config", name="Sample X-ray polarization")
+    sample_polarization = Cpt(PseudoSingle, kind="hinted", name="Sample X-ray polarization")
     # real motors
 
-    monoen = Cpt(Monochromator, "XF:07ID1-OP{Mono:PGM1-Ax:", kind="config", name="Mono Energy")
+    monoen = Cpt(Monochromator, "XF:07ID1-OP{Mono:PGM1-Ax:", kind="hinted", name="Mono Energy")
     epugap = Cpt(
         UndulatorMotor,
         "SR:C07-ID:G1A{SST1:1-Ax:Gap}-Mtr",
-        kind="config",
+        kind="hinted",
         name="EPU Gap",
     )
     epuphase = Cpt(
         UndulatorMotor,
         "SR:C07-ID:G1A{SST1:1-Ax:Phase}-Mtr",
-        kind="config",
+        kind="hinted",
         name="EPU Phase",
     )
     epumode = Cpt(

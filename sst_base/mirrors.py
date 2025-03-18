@@ -11,6 +11,10 @@ class HexapodMirror(Device):
     pitch = Cpt(EpicsSignal, "P}Mtr_MON", write_pv="P}Mtr_SP", kind="hinted")
     yaw = Cpt(EpicsSignal, "Yaw}Mtr_MON", write_pv="Yaw}Mtr_SP", kind="hinted")
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.position_axes = [self.x, self.y, self.z, self.roll, self.pitch, self.yaw]
+
 
 class FMBHexapodMirrorAxis(PVPositioner):
     readback = Cpt(EpicsSignalRO, "Mtr_MON")
@@ -41,3 +45,7 @@ class FMBHexapodMirror(Device):
     pitch = Cpt(FMBHexapodMirrorAxis, "-Ax:P}")
     yaw = Cpt(FMBHexapodMirrorAxis, "-Ax:Yaw}")
     roll = Cpt(FMBHexapodMirrorAxis, "-Ax:R}")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.position_axes = [self.x, self.y, self.z, self.roll, self.pitch, self.yaw]

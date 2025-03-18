@@ -1,3 +1,6 @@
+import itertools
+from pathlib import PurePath
+
 from ophyd import (
     ProsilicaDetector,
     SingleTrigger,
@@ -11,17 +14,143 @@ from ophyd import (
     OverlayPlugin,
     ProsilicaDetectorCam,
     ColorConvPlugin,
+    Signal
 )
-from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite
+from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite, resource_factory
 from ophyd import Component as Cpt
 from nslsii.ad33 import SingleTriggerV33, StatsPluginV33
+from nbs_bl.beamline import GLOBAL_BEAMLINE as bl
+from os.path import join
+import os
+from datetime import datetime
 
 
-class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
+class ExternalFileReference(Signal):
+    """
+    A pure software signal where a Device can stash a datum_id.
+    For example, it can store timestamps from HDF5 files. It needs
+    a `shape` because an HDF5 file can store multiple frames which
+    have multiple timestamps.
+    """
+    def __init__(self, *args, shape, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.shape = shape
+
+    def describe(self):
+        res = super().describe()
+        res[self.name].update(
+            dict(external="FILESTORE:", dtype="array", shape=self.shape)
+        )
+        return res
+
+
+class TIFFPluginWithProposalDirectory(TIFFPlugin, FileStoreTIFFIterativeWrite):
     """Add this as a component to detectors that write TIFFs."""
 
-    pass
+    # Captures the datum id for hte timestamp recorded in the TIFF file
+    time_stamp = Cpt(ExternalFileReference, value="", kind="normal", shape=[])
 
+    def __init__(self, *args, md, camera_name, write_path_template="/nsls2/data/sst/proposals", date_template="%Y/%m/%d/", **kwargs):
+        super().__init__(*args, write_path_template="", root=write_path_template, **kwargs)
+        self.md = md
+        self.camera_name = camera_name
+        self.date_template = date_template
+
+        # Setup for timestamping using the detector
+        self._ts_datum_factory = None
+        self._ts_resource_uid = ""
+        self._ts_counter = None
+
+    def stage(self):
+        # Start the timestamp counter
+        self._ts_counter = itertools.count()
+        return super().stage()
+
+    def make_filename(self):
+        proposal_path = f"{self.md['cycle']}/{self.md['data_session']}/assets/{self.camera_name}"
+        write_path = join(self.write_path_template, proposal_path, self.date_template)
+        filename = datetime.now().strftime("%Y-%m-%dT%H-%M-%S-%f")
+        formatter = datetime.now().strftime
+        write_path = formatter(write_path)
+        read_path = write_path
+        return filename, read_path, write_path
+
+    def _generate_resource(self, resource_kwargs):
+        super()._generate_resource(resource_kwargs)
+        fn = PurePath(self._fn).relative_to(self.reg_root)
+
+        # Update the shape that describe() will report
+        # Multiple images will have multiple timestamps
+        self.time_stamp.shape = [self.get_frames_per_point()]
+
+        # Query for the AD_TIFF_TS timestamp
+        resource, self._ts_datum_factory = resource_factory(
+            spec="AD_TIFF_TS",
+            root=str(self.reg_root),
+            resource_path=str(fn),
+            resource_kwargs=resource_kwargs,
+            path_semantics=self.path_semantics,
+        )
+
+        self._ts_resource_uid = resource["uid"]
+        self._asset_docs_cache.append(("resource", resource))
+
+    def generate_datum(self, key, timestamp, datum_kwargs):
+        ret = super().generate_datum(key, timestamp, datum_kwargs)
+        datum_kwargs = datum_kwargs or {}
+        datum_kwargs.update({"point_number": next(self._ts_counter)})
+        datum = self._ts_datum_factory(datum_kwargs)
+        datum_id = datum["datum_id"]
+
+        self._asset_docs_cache.append(("datum", datum))
+
+        self.time_stamp.put(datum_id)
+        return ret
+"""
+
+    @property
+    def read_path_template(self):
+        self._read_path_template = (
+            f"/nsls2/data/sst/proposals/{self.md['cycle']}/{self.md['data_session']}/assets/{self.camera_name}"
+        )
+        self._read_path_template = join(self._read_path_template, self.write_template)
+        return super().read_path_template
+
+    @read_path_template.setter
+    def read_path_template(self, val):
+        if val is not None:
+            val = join(val, "")
+        self._read_path_template = val
+
+    @property
+    def write_path_template(self):
+        self._write_path_template = (
+            f"/nsls2/data/sst/proposals/{self.md['cycle']}/{self.md['data_session']}/assets/{self.camera_name}"
+        )
+        self._write_path_template = join(self._write_path_template, self.write_template)
+
+        return super().write_path_template
+
+    @write_path_template.setter
+    def write_path_template(self, val):
+        if val is not None:
+            val = join(val, "")
+        self._write_path_template = val
+
+    @property
+    def reg_root(self):
+        self._root = (
+            f"/nsls2/data/sst/proposals/{self.md['cycle']}/{self.md['data_session']}/assets/{self.camera_name}/"
+        )
+        return super().reg_root
+
+    @reg_root.setter
+    def reg_root(self, val):
+        if val is not None:
+            val = join(val, "")
+        else:
+            val = os.path.sep
+        self._root = val"""
 
 class TIFFPluginEnsuredOff(TIFFPlugin):
     """Add this as a component to detectors that do not write TIFFs."""
@@ -102,34 +231,54 @@ class StandardProsilicaV33(SingleTriggerV33, ProsilicaDetector):
         return {"fields": [self.stats1.total.name]}
 
 
-class StandardProsilicaWithTIFF(StandardProsilica):
-    tiff = Cpt(
-        TIFFPluginWithFileStore,
-        suffix="TIFF1:",
-        write_path_template="/nsls2/data/sst/assets/%Y/%m/%d/",
-        root="/nsls2/data/sst/assets",
-    )
+def StandardProsilicaWithTIFFFactory(*args, camera_name="", date_template="%Y/%m/%d/", **kwargs):
+
+    class StandardProsilicaWithTIFF(StandardProsilica):
+        tiff = Cpt(
+            TIFFPluginWithProposalDirectory,
+            suffix="TIFF1:",
+            md=bl.md,
+            camera_name=camera_name,
+            date_template=date_template,
+        )
+
+    return StandardProsilicaWithTIFF(*args, **kwargs)
 
 
-class StandardProsilicaWithTIFFV33(StandardProsilicaV33):
-    tiff = Cpt(
-        TIFFPluginWithFileStore,
-        suffix="TIFF1:",
-        write_path_template="/nsls2/data/sst/assets/%Y/%m/%d/",
-        root="/nsls2/data/sst/assets",
-    )
+def StandardProsilicaWithTIFFV33Factory(*args, camera_name="", date_template="%Y/%m/%d/", **kwargs):
 
-class ColorProsilicaWithTIFFV33(StandardProsilicaV33):
-    tiff = Cpt(
-        TIFFPluginWithFileStore,
-        suffix="TIFF1:",
-        write_path_template="/nsls2/data/sst/assets/%Y/%m/%d/",
-        root="/nsls2/data/sst/assets",
-    )
-    def describe(self):
-        res = super().describe()
-        # Patch: device has a color dimension that is not reported correctly
-        # by ophyd.
-        res["Sample Imager Detector Area Camera_image"]["shape"] = (*res["Sample Imager Detector Area Camera_image"]["shape"], 3)
-        res["Sample Imager Detector Area Camera_image"]["dtype_str"] = "|u1"
-        return res
+    class StandardProsilicaWithTIFFV33(StandardProsilicaV33):
+        tiff = Cpt(
+            TIFFPluginWithProposalDirectory,
+            suffix="TIFF1:",
+            md=bl.md,
+            camera_name=camera_name,
+            date_template=date_template,
+        )
+
+    return StandardProsilicaWithTIFFV33(*args, **kwargs)
+
+
+def ColorProsilicaWithTIFFV33Factory(*args, camera_name="", date_template="%Y/%m/%d/", **kwargs):
+
+    class ColorProsilicaWithTIFFV33(StandardProsilicaV33):
+        tiff = Cpt(
+            TIFFPluginWithProposalDirectory,
+            suffix="TIFF1:",
+            md=bl.md,
+            camera_name=camera_name,
+            date_template=date_template,
+        )
+
+        def describe(self):
+            res = super().describe()
+            # Patch: device has a color dimension that is not reported correctly
+            # by ophyd.
+            res["Sample Imager Detector Area Camera_image"]["shape"] = (
+                *res["Sample Imager Detector Area Camera_image"]["shape"],
+                3,
+            )
+            res["Sample Imager Detector Area Camera_image"]["dtype_str"] = "|u1"
+            return res
+
+    return ColorProsilicaWithTIFFV33(*args, **kwargs)
