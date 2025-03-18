@@ -63,6 +63,8 @@ class WienerPSChannel(PVPositionerComparator):
         """Handle switch state and start motion."""
         if not self.switch.get():
             return self.setpoint.put(0, wait=False)
+        if not self._pos_polarity:
+            position = -np.abs(position)
         return self.setpoint.put(position, wait=False)
 
     def done_comparator(self, readback, setpoint):
@@ -132,9 +134,7 @@ def WienerPSFactory(
         ch_name = locals()[f"lvch{i}"]
         if ch_name is not None:
             safe_name = sanitize_name(ch_name)
-            components[f"lv_{safe_name}"] = Cpt(
-                WienerPSChannel, f"-LV-u{i}}}", invert_readback=True, kind="normal"
-            )
+            components[f"lv_{safe_name}"] = Cpt(WienerPSChannel, f"-LV-u{i}}}", pos_polarity=False, kind="normal")
 
     # Add HV channels as components
     for i in range(8):
@@ -144,8 +144,10 @@ def WienerPSFactory(
             components[f"hv_{safe_name}"] = Cpt(WienerPSChannel, f"-HV-u30{i}}}", kind="normal")
 
     # Create a new WienerPS class with the components
-    return type(
+    ps = type(
         "WienerPS",
         (WienerPSBase,),
         components,
     )(prefix, name=name, **kwargs)
+    ps.position_axes = [getattr(ps, ch_name) for ch_name in components]
+    return ps
