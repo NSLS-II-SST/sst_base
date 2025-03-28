@@ -14,9 +14,11 @@ from ophyd import (
     OverlayPlugin,
     ProsilicaDetectorCam,
     ColorConvPlugin,
-    Signal
+    Signal,
+    EpicsSignalRO,
 )
 from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite, resource_factory
+from ophyd.areadetector.plugins import ImagePlugin_V33
 from ophyd import Component as Cpt
 from nslsii.ad33 import SingleTriggerV33, StatsPluginV33
 from nbs_bl.beamline import GLOBAL_BEAMLINE as bl
@@ -106,51 +108,6 @@ class TIFFPluginWithProposalDirectory(TIFFPlugin, FileStoreTIFFIterativeWrite):
 
         self.time_stamp.put(datum_id)
         return ret
-"""
-
-    @property
-    def read_path_template(self):
-        self._read_path_template = (
-            f"/nsls2/data/sst/proposals/{self.md['cycle']}/{self.md['data_session']}/assets/{self.camera_name}"
-        )
-        self._read_path_template = join(self._read_path_template, self.write_template)
-        return super().read_path_template
-
-    @read_path_template.setter
-    def read_path_template(self, val):
-        if val is not None:
-            val = join(val, "")
-        self._read_path_template = val
-
-    @property
-    def write_path_template(self):
-        self._write_path_template = (
-            f"/nsls2/data/sst/proposals/{self.md['cycle']}/{self.md['data_session']}/assets/{self.camera_name}"
-        )
-        self._write_path_template = join(self._write_path_template, self.write_template)
-
-        return super().write_path_template
-
-    @write_path_template.setter
-    def write_path_template(self, val):
-        if val is not None:
-            val = join(val, "")
-        self._write_path_template = val
-
-    @property
-    def reg_root(self):
-        self._root = (
-            f"/nsls2/data/sst/proposals/{self.md['cycle']}/{self.md['data_session']}/assets/{self.camera_name}/"
-        )
-        return super().reg_root
-
-    @reg_root.setter
-    def reg_root(self, val):
-        if val is not None:
-            val = join(val, "")
-        else:
-            val = os.path.sep
-        self._root = val"""
 
 class TIFFPluginEnsuredOff(TIFFPlugin):
     """Add this as a component to detectors that do not write TIFFs."""
@@ -208,7 +165,7 @@ class StandardProsilica(SingleTrigger, ProsilicaDetector):
 
 class StandardProsilicaV33(SingleTriggerV33, ProsilicaDetector):
     cam = Cpt(ProsilicaDetectorCamV33, "cam1:")
-    image = Cpt(ImagePlugin, "image1:")
+    image = Cpt(ImagePlugin_V33, "image1:")
     stats1 = Cpt(StatsPluginV33, "Stats1:")
     stats2 = Cpt(StatsPluginV33, "Stats2:")
     stats3 = Cpt(StatsPluginV33, "Stats3:")
@@ -282,3 +239,30 @@ def ColorProsilicaWithTIFFV33Factory(*args, camera_name="", date_template="%Y/%m
             return res
 
     return ColorProsilicaWithTIFFV33(*args, **kwargs)
+
+class StatsWCentroid(StatsPluginV33):
+    centroid_total = Cpt(EpicsSignalRO,'CentroidTotal_RBV',kind='hinted')
+    profile_avg_x = Cpt(EpicsSignalRO,'ProfileAverageX_RBV',kind='hinted')
+    profile_avg_y = Cpt(EpicsSignalRO,'ProfileAverageY_RBV',kind='hinted')
+
+def StandardProsilicawstatsFactory(*args, camera_name="", date_template="%Y/%m/%d", write_path_template="/nsls2/data/sst/proposals", **kwargs):
+    class StandardProsilicawstats(StandardProsilicaV33):
+        tiff = Cpt(
+            TIFFPluginWithProposalDirectory,
+            suffix="TIFF1:",
+            md=bl.md,
+            camera_name=camera_name,
+            write_path_template=write_path_template,
+            date_template=date_template,
+            read_attrs=["time_stamp"],
+        )
+        stats1 = Cpt(StatsWCentroid, "Stats1:", kind='hinted')
+        stats2 = Cpt(StatsWCentroid, "Stats2:", read_attrs=["total"])
+        stats3 = Cpt(StatsWCentroid, "Stats3:", read_attrs=["total"])
+        stats4 = Cpt(StatsWCentroid, "Stats4:", read_attrs=["total"])
+        stats5 = Cpt(StatsWCentroid, "Stats5:", read_attrs=["total","centroid_total", "profile_avg_x", "profile_avg_y"])
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+
+    return StandardProsilicawstats(*args, **kwargs)
