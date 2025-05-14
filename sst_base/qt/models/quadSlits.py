@@ -1,5 +1,5 @@
 from qtpy.QtCore import Signal, QTimer
-from nbs_gui.models import MotorModel
+from nbs_gui.models import MotorModel, PseudoSingleModel
 from nbs_gui.models.base import BaseModel
 from ...slits import QuadSlitsBase
 from ..views.quadSlits import QuadSlitsMonitor, QuadSlitsControl
@@ -31,15 +31,19 @@ class QuadSlitsModel(BaseModel):
         super().__init__(name, obj, group, long_name, **kwargs)
 
         # Create motor models for pseudo motors
-        self.vsize = MotorModel(name=f"{name}_vsize", obj=obj.vsize, group=group, long_name=f"{long_name} V Size")
+        self.vsize = PseudoSingleModel(
+            name=f"{name}_vsize", obj=obj.vsize, group=group, long_name=f"{long_name} V Size"
+        )
 
-        self.vcenter = MotorModel(
+        self.vcenter = PseudoSingleModel(
             name=f"{name}_vcenter", obj=obj.vcenter, group=group, long_name=f"{long_name} V Center"
         )
 
-        self.hsize = MotorModel(name=f"{name}_hsize", obj=obj.hsize, group=group, long_name=f"{long_name} H Size")
+        self.hsize = PseudoSingleModel(
+            name=f"{name}_hsize", obj=obj.hsize, group=group, long_name=f"{long_name} H Size"
+        )
 
-        self.hcenter = MotorModel(
+        self.hcenter = PseudoSingleModel(
             name=f"{name}_hcenter", obj=obj.hcenter, group=group, long_name=f"{long_name} H Center"
         )
 
