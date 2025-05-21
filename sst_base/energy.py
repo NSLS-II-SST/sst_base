@@ -440,7 +440,6 @@ class EnPos(PseudoPositioner):
     def land(self):
         if self._fly_move_st.done:
             self._flying = False
-            self._time_resolution = None
             self.scanlock.set(False).wait()
             self.flycontrol.disable_undulator_sync().wait()
 
