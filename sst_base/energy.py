@@ -137,6 +137,25 @@ class FlyControl(Device):
             print("Enable undulator sync done")
             return st
 
+    def disable_undulator_sync(self):
+        print("Disable undulator sync")
+
+        def check_value(*, old_value, value, **kwargs):
+            if int(value) & 2:
+                return True
+            else:
+                return False
+
+        st = SubscriptionStatus(self.undulator_dance_enable, check_value, run=True)
+        status = self.undulator_dance_enable.get()
+        if int(status) & 2:
+            print("Undulator sync already disabled")
+            return st
+        else:
+            self.undulator_dance_enable.put(0)
+            print("Disable undulator sync done")
+            return st
+
     def flymove(self, start, speed=5):
         print("Flymove initialization")
         self.enable_undulator_sync().wait()
@@ -379,9 +398,9 @@ class EnPos(PseudoPositioner):
 
         # flymove currently unreliable
         # self.flycontrol.flymove(start, speed=5).wait()
-        # print("Setting energy to start")
-        # self.energy.set(start).wait(timeout=60)
-        # print("Setting energy to start... done")
+        print("Setting energy to start")
+        self.energy.set(start).wait(timeout=60)
+        print("Setting energy to start... done")
         self._last_mono_value = start
         self._mono_stop = stop
         self._ready_to_fly = True
@@ -423,6 +442,7 @@ class EnPos(PseudoPositioner):
             self._flying = False
             self._time_resolution = None
             self.scanlock.set(False).wait()
+            self.flycontrol.disable_undulator_sync().wait()
 
     def kickoff(self):
         kickoff_st = DeviceStatus(device=self)
