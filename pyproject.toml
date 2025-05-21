@@ -27,6 +27,9 @@ sst-gui-samples = "sst_base.qt.tabs.sampleTab:SampleTab"
 [project.entry-points."nbs_gui.widgets"]
 sst-gui-header = "sst_base.qt.widgets.header:NSLSHeader"
 
+[project.entry-points."nbs_gui.plans"]
+sst-gui-energy-flyscan = "sst_base.qt.plans.energyFlyscan:EnergyFlyscanWidget"
+
 [tool.setuptools]
 packages = ["sst_base"]
 

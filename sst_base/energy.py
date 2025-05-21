@@ -170,18 +170,20 @@ class FlyControl(Device):
         move_st = SubscriptionStatus(self.flymove_moving, check_value, run=False)
         return move_st
 
-    def scan_setup(self, start, stop, speed):
+    def scan_setup(self, start, stop, speed, bidirectional=False, sweeps=1):
         print("Flyscan setup")
-        self.scan_start_ev.set(start).wait()
-        self.scan_stop_ev.set(stop).wait()
-        self.scan_speed_ev.set(speed).wait()
+        self.scan_start_ev.set(start).wait(timeout=10)
+        self.scan_stop_ev.set(stop).wait(timeout=10)
+        self.scan_speed_ev.set(speed).wait(timeout=10)
         scan_range = stop - start
-        self.scan_trigger_width.set(0.1).wait()
-        trig_width = self.scan_trigger_width.get()
+        self.scan_trigger_width.set(0.1).wait(timeout=10)
+        trig_width = self.scan_trigger_width.get(timeout=10)
         # Not relevant yet, but required for scan
         ntrig = np.abs(scan_range // (2 * trig_width))
         print(f"number of triggers : {ntrig}")
-        self.scan_trigger_n.set(ntrig).wait()
+        self.scan_trigger_n.set(ntrig).wait(timeout=10)
+        self.scan_type.set(1 if bidirectional else 0).wait(timeout=10)
+        self.num_scans.set(sweeps).wait(timeout=10)
         print("Flyscan setup done")
 
     def scan_start(self):
@@ -369,7 +371,9 @@ class EnPos(PseudoPositioner):
     def wh(self):
         boxed_text(self.name + " location", self.where_sp(), "green", shrink=True)
 
-    def preflight(self, start, stop, speed, *args, locked=True, time_resolution=None):
+    def preflight(
+        self, start, stop, speed, *args, locked=True, time_resolution=None, bidirectional=False, sweeps=1
+    ):
         print("Energy preflight")
         if len(args) > 0:
             if len(args) % 3 != 0:
@@ -394,7 +398,7 @@ class EnPos(PseudoPositioner):
             print("Setting scanlock... do we want to do this?")
             self.scanlock.set(True).wait()
 
-        self.flycontrol.scan_setup(start, stop, speed)
+        self.flycontrol.scan_setup(start, stop, speed, bidirectional=bidirectional, sweeps=sweeps)
 
         # flymove currently unreliable
         print("Setting energy to start")
