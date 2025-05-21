@@ -397,9 +397,10 @@ class EnPos(PseudoPositioner):
         self.flycontrol.scan_setup(start, stop, speed)
 
         # flymove currently unreliable
-        # self.flycontrol.flymove(start, speed=5).wait()
         print("Setting energy to start")
-        self.energy.set(start).wait(timeout=60)
+
+        self.flycontrol.flymove(start, speed=20).wait()
+        # self.energy.set(start).wait(timeout=60)
         print("Setting energy to start... done")
         self._last_mono_value = start
         self._mono_stop = stop
