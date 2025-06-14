@@ -19,6 +19,7 @@ from sst_base.motors import PrettyMotorFMBO, FlyerMixin, PrettyMotorFMBODeadband
 from nbs_bl.devices import DeadbandEpicsMotor, DeadbandMixin, PseudoSingle
 
 import time
+from datetime import datetime
 from ophyd.status import DeviceStatus, SubscriptionStatus
 import threading
 
@@ -165,13 +166,13 @@ class FlyControl(Device):
         def check_value(*old_value, value, **kwargs):
             return old_value != 0 and value == 0
 
-        print("Flymove start")
+        print(f"[{datetime.now().isoformat()}] Flymove start")
         self.flymove_start.set(1).wait()
         move_st = SubscriptionStatus(self.flymove_moving, check_value, run=False)
         return move_st
 
     def scan_setup(self, start, stop, speed, bidirectional=False, sweeps=1):
-        print("Flyscan setup")
+        print(f"[{datetime.now().isoformat()}] Flyscan setup")
         self.scan_start_ev.set(start).wait(timeout=10)
         self.scan_stop_ev.set(stop).wait(timeout=10)
         self.scan_speed_ev.set(speed).wait(timeout=10)
@@ -187,10 +188,10 @@ class FlyControl(Device):
         print("Flyscan setup done")
 
     def scan_start(self):
-        print("Flyscan start")
+        print(f"[{datetime.now().isoformat()}] Flyscan start")
         self.enable_undulator_sync().wait()
         self.scan_start_go.set(1).wait()
-        print("Flyscan start done")
+        print(f"[{datetime.now().isoformat()}] Flyscan start done")
 
         def check_value(*, old_value, value, **kwargs):
             if old_value != 0 and value == 0:
@@ -374,7 +375,7 @@ class EnPos(PseudoPositioner):
     def preflight(
         self, start, stop, speed, *args, locked=True, time_resolution=None, bidirectional=False, sweeps=1
     ):
-        print("Energy preflight")
+        print(f"[{datetime.now().isoformat()}] Energy preflight")
         if len(args) > 0:
             if len(args) % 3 != 0:
                 raise ValueError(
@@ -384,6 +385,7 @@ class EnPos(PseudoPositioner):
                 self.flight_segments = (
                     (args[3 * n], args[3 * n + 1], args[3 * n + 2]) for n in range(len(args) // 3)
                 )
+                print(f"[{datetime.now().isoformat()}] {len(self.flight_segments)} segments defined]")
         else:
             self.flight_segments = iter(())
 
@@ -401,11 +403,11 @@ class EnPos(PseudoPositioner):
         self.flycontrol.scan_setup(start, stop, speed, bidirectional=bidirectional, sweeps=sweeps)
 
         # flymove currently unreliable
-        print("Setting energy to start")
+        print(f"[{datetime.now().isoformat()}] Setting energy to start")
 
         self.flycontrol.flymove(start, speed=20).wait()
         # self.energy.set(start).wait(timeout=60)
-        print("Setting energy to start... done")
+        print(f"[{datetime.now().isoformat()}] Setting energy to start... done")
         self._last_mono_value = start
         self._mono_stop = stop
         self._ready_to_fly = True
@@ -415,28 +417,30 @@ class EnPos(PseudoPositioner):
         Should be called after all detectors start flying, so that we don't lose data
         """
         if not self._ready_to_fly:
-            print("Energy is not ready to fly")
+            print(f"[{datetime.now().isoformat()}] Energy is not ready to fly")
             self._fly_move_st = DeviceStatus(device=self)
             self._fly_move_st.set_exception(RuntimeError)
         else:
-            print("Energy is ready to fly")
+            print(f"[{datetime.now().isoformat()}] Energy is ready to fly")
 
             def check_value(*, old_value, value, **kwargs):
                 if old_value != 0 and value == 0:  # was moving, but not moving anymore
                     try:
-                        print("got to stopping point")
+                        print(f"[{datetime.now().isoformat()}] got to stopping point")
                         start, stop, speed = next(self.flight_segments)
+                        print(f"[{datetime.now().isoformat()}] starting next step to {stop}eV at {speed}eV/sec")
                         self.flycontrol.scan_setup(start, stop, speed).wait()
-                        print(f"starting next step to {stop}eV at {speed}eV/sec")
                         self.flycontrol.scan_start()
                         return False
                     except StopIteration:
+                        print(f"[{datetime.now().isoformat()}] No more segments")
                         return True
                 else:
                     return False
 
             # Need our own check_value that will keep flying until there are no more flight segments left
             self._fly_move_st = SubscriptionStatus(self.flycontrol.scanning, check_value, run=False)
+            print(f"[{datetime.now().isoformat()}] Calling flycontrol.scan_start()")
             self.flycontrol.scan_start()
             self._flying = True
             self._ready_to_fly = False
@@ -447,6 +451,8 @@ class EnPos(PseudoPositioner):
             self._flying = False
             self.scanlock.set(False).wait()
             self.flycontrol.disable_undulator_sync().wait()
+        else:
+            print(f"[{datetime.now().isoformat()}] Trying to land, but fly_move not done. How did we get here??")
 
     def kickoff(self):
         kickoff_st = DeviceStatus(device=self)
