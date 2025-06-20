@@ -31,7 +31,7 @@ class GasFlowModel(PVPositionerModel):
     def __init__(self, name, obj, group, long_name, **kwargs):
         # Initialize the parent PVPositionerModel
         super().__init__(name=name, obj=obj, group=group, long_name=long_name)
-        self.gas_name = obj.gas_name
+        self.gas_name = obj.gas_name if hasattr(obj, "gas_name") else name
 
     """
         self._initialize()
@@ -85,6 +85,34 @@ class GasFlowModel(PVPositionerModel):
         return value
 
 
+class InputLineModel:
+    """
+    Model for a single input line with gas selection and gas flows.
+
+    This represents the physical input with its gas selection and A/B gas flows.
+    """
+
+    def __init__(self, name, obj, group, long_name, **kwargs):
+        self.name = name
+        self.obj = obj
+        self.group = group
+        self.label = long_name
+
+        # Create models for gas selection and gas name
+        self.gas_selection = EnumModel(
+            name=f"{name}_gas_selection", obj=obj.gas_selection, group=group, long_name=f"{name} Gas Selection"
+        )
+
+        self.gas_name = PVModelRO(
+            name=f"{name}_gas_name", obj=obj.gas_name, group=group, long_name=f"{name} Gas Name"
+        )
+
+        # Create models for A and B gas flows
+        self.a_flow = GasFlowModel(name=f"{name}_a_flow", obj=obj.a, group=group, long_name=f"{name} A Line Flow")
+
+        self.b_flow = GasFlowModel(name=f"{name}_b_flow", obj=obj.b, group=group, long_name=f"{name} B Line Flow")
+
+
 class GasFlowsTupleModel(MultiMotorModel):
     """
     Model for a tuple of gas flow controls.
@@ -102,16 +130,22 @@ class GasFlowsTupleModel(MultiMotorModel):
             name=name, obj=obj, group=group, long_name=long_name, show_real_motors_by_default=True, **kwargs
         )
 
-        # Store gas names for reference
-        self.gas_names = obj.gas_names
-
-        # Create gas flow models directly
+        # Create input line models
+        self.input_lines = []
         self.real_motors = []
-        for gas_name in obj.gas_names:
-            print(f"Creating gas flow model for {gas_name}")
-            gas_device = getattr(obj, gas_name)
-            gas_model = GasFlowModel(gas_name, gas_device, group, f"Gas Flow {gas_name}")
-            self.real_motors.append(gas_model)
+
+        for i in range(1, 8):
+            input_name = f"input_{i}"
+            input_obj = getattr(obj, input_name, None)
+
+            if input_obj is not None:
+                print(f"Creating input line model for {input_name}")
+                input_model = InputLineModel(input_name, input_obj, group, f"Input {i}")
+                self.input_lines.append(input_model)
+
+                # Add A and B flows to real_motors for motor tuple display
+                self.real_motors.append(input_model.a_flow)
+                self.real_motors.append(input_model.b_flow)
 
         # For compatibility with switchable views, we use real_motors as pseudo_motors
         # since they are what we want to show by default
@@ -119,8 +153,13 @@ class GasFlowsTupleModel(MultiMotorModel):
 
         # Create a mapping from gas names to gas models for easy access
         self.gas_models = {}
-        for gas_model in self.real_motors:
-            self.gas_models[gas_model.gas_name] = gas_model
+        for input_model in self.input_lines:
+            # Map by gas name from the PV
+            a_gas_name = input_model.gas_name.value or f"{input_model.name}_A"
+            b_gas_name = input_model.gas_name.value or f"{input_model.name}_B"
+
+            self.gas_models[a_gas_name] = input_model.a_flow
+            self.gas_models[b_gas_name] = input_model.b_flow
 
     def get_gas_model(self, gas_name):
         """Get gas flow model by name."""
@@ -129,6 +168,18 @@ class GasFlowsTupleModel(MultiMotorModel):
     def get_all_gas_models(self):
         """Get all gas flow models."""
         return list(self.gas_models.values())
+
+    def get_line_a_models(self):
+        """Get gas flow models for line A."""
+        return [input_model.a_flow for input_model in self.input_lines]
+
+    def get_line_b_models(self):
+        """Get gas flow models for line B."""
+        return [input_model.b_flow for input_model in self.input_lines]
+
+    def get_input_line_models(self):
+        """Get all input line models."""
+        return self.input_lines
 
 
 class EurothermModel:
@@ -211,7 +262,7 @@ class FasstcatModel:
         )
 
         # Store gas names for reference
-        self.gas_names = obj.gas_names
+        self.gas_names = obj.get_enabled_gas_names()
 
         # Set additional attributes
         for key, value in kwargs.items():
@@ -236,3 +287,35 @@ class FasstcatModel:
     def get_all_gas_models(self):
         """Get all gas flow models."""
         return self.gas_flows.get_all_gas_models()
+
+    def get_line_a_models(self):
+        """Get gas flow models for line A."""
+        return self.gas_flows.get_line_a_models()
+
+    def get_line_b_models(self):
+        """Get gas flow models for line B."""
+        return self.gas_flows.get_line_b_models()
+
+    def stop_line_a_flows(self):
+        """Stop all gas flows on line A."""
+        self.obj.stop_line_a_flows()
+
+    def stop_line_b_flows(self):
+        """Stop all gas flows on line B."""
+        self.obj.stop_line_b_flows()
+
+    def stop_all_flows(self):
+        """Stop all gas flows on all lines."""
+        self.obj.stop_all_flows()
+
+    def get_input_line_models(self):
+        """Get all input line models."""
+        return self.gas_flows.get_input_line_models()
+
+    def get_line_a_gases(self):
+        """Get list of gas names on line A."""
+        return self.obj.get_line_a_gases()
+
+    def get_line_b_gases(self):
+        """Get list of gas names on line B."""
+        return self.obj.get_line_b_gases()
