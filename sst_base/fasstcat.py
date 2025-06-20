@@ -19,9 +19,26 @@ class GasFlowPositioner(PVPositionerPC):
     setpoint = Component(EpicsSignal, "SP", kind="config")
     readback = Component(EpicsSignalRO, "RB")
 
-    def __init__(self, prefix, gas_name, **kwargs):
-        self.gas_name = gas_name
-        super().__init__(prefix, **kwargs)
+
+class InputLine(Device):
+    """
+    Represents a single input line with A and B gas flows.
+
+    Each input has a gas selection and can have gas flows on both A and B lines.
+    The gas selection determines which gas is available for flow control.
+    """
+
+    # Gas flow for line A (if present)
+    a = Component(GasFlowPositioner, "A_", name="a")
+
+    # Gas flow for line B (if present)
+    b = Component(GasFlowPositioner, "B_", name="b")
+
+    # Gas selection (determines which gas is available)
+    gas_selection = Component(EpicsSignal, "Gas_Selection", string=True, kind="config")
+
+    # Gas name (read from PV, reflects current selection)
+    gas_name = Component(EpicsSignalRO, "Gas_Name", string=True, kind="config")
 
 
 class EurothermControl(Device):
@@ -40,91 +57,77 @@ class PulseControl(Device):
     Pulse mode control.
     """
 
-    line_select = Component(EpicsSignal, "Line_Select", kind="config")
-    line_mode = Component(EpicsSignal, "Line_Mode", kind="config")
+    line_select = Component(EpicsSignal, "Line_Select", string=True, kind="config")
+    line_mode = Component(EpicsSignal, "Line_Mode", string=True, kind="config")
     count = Component(EpicsSignal, "Pulse_Count", kind="config")
     time = Component(EpicsSignal, "Pulse_Time", kind="config")
     start = Component(EpicsSignal, "Pulse_Trigger", kind="omitted")
     status = Component(EpicsSignalRO, "Pulse_Status", kind="config")
 
 
-def create_fasstcat_class(gases=None):
+class Fasstcat(Device):
     """
-    Create Fasstcat device class with gas flow components.
+    FASSTCAT gas control and temperature management device.
+
+    This device provides control over gas flows, temperature ramping,
+    and pulse modes for the FASSTCAT system.
 
     Parameters
     ----------
-    gases : list, optional
-        List of gas names to create flow controllers for.
-        If None, uses default gas list.
-
-    Returns
-    -------
-    type
-        Fasstcat device class with all gas components defined.
+    prefix : str
+        PV prefix for the FASSTCAT IOC
     """
-    if gases is None:
-        # Default gases from the system
-        gases = [
-            "H2_A",
-            "H2_B",
-            "D2_A",
-            "D2_B",
-            "O2_A",
-            "O2_B",
-            "CO_AH",
-            "CO_AL",
-            "CO_BH",
-            "CO_BL",
-            "CO2_AH",
-            "CO2_AL",
-            "CO2_BH",
-            "CO2_BL",
-            "CH4_A",
-            "CH4_B",
-            "C2H6_A",
-            "C2H6_B",
-            "C3H8_A",
-            "C3H8_B",
-            "He_A",
-            "He_B",
-            "Ar_A",
-            "Ar_B",
-            "N2_A",
-            "N2_B",
-        ]
 
-    # Start with base class attributes
-    class_attrs = {
-        "__doc__": """
-        FASSTCAT gas control and temperature management device.
+    # Temperature control
+    eurotherm = Component(EurothermControl, "eurotherm}")
 
-        This device provides control over gas flows, temperature ramping,
-        and pulse modes for the FASSTCAT system.
+    # Pulse control
+    pulse = Component(PulseControl, "pulse}")
 
-        Parameters
-        ----------
-        prefix : str
-            PV prefix for the FASSTCAT IOC
-        """,
-        # Temperature control
-        "eurotherm": Component(EurothermControl, "eurotherm}"),
-        # Pulse control
-        "pulse": Component(PulseControl, "pulse}"),
-        # Flow apply trigger
-        "flow_apply": Component(EpicsSignal, "flowsms}Flow_Apply"),
-        # Store gas names for reference
-        "gas_names": gases,
-    }
+    # Flow apply trigger
+    flow_apply = Component(EpicsSignal, "flowsms}Flow_Apply")
 
-    # Add gas flow positioners
-    for gas in gases:
-        class_attrs[gas] = Component(GasFlowPositioner, f"flowsms}}{gas}_", gas_name=gas)
+    # Gas options PV (comma-separated string)
+    gas_options = Component(EpicsSignalRO, "Gas_Options")
 
-    # Create the class
-    Fasstcat = type("Fasstcat", (Device,), class_attrs)
+    # Input lines - each represents a physical input with valve and gas flows
+    input_1 = Component(InputLine, "flowsms}Input_1_", name="input_1")
+    input_2 = Component(InputLine, "flowsms}Input_2_", name="input_2")
+    input_3 = Component(InputLine, "flowsms}Input_3_", name="input_3")
+    input_4 = Component(InputLine, "flowsms}Input_4_", name="input_4")
+    input_5 = Component(InputLine, "flowsms}Input_5_", name="input_5")
+    input_6 = Component(InputLine, "flowsms}Input_6_", name="input_6")
+    input_7 = Component(InputLine, "flowsms}Input_7_", name="input_7")
 
-    # Add methods
+    def __init__(self, prefix, name="fasstcat", **kwargs):
+        super().__init__(prefix=prefix, name=name, **kwargs)
+        self._enabled_gases = set()
+        self._update_enabled_gases()
+
+    def _update_enabled_gases(self):
+        """Update the set of enabled gases based on gas_options PV."""
+        try:
+            gas_options_str = self.gas_options.get()
+            if gas_options_str:
+                # Parse comma-separated string into list
+                gas_options = [gas.strip() for gas in gas_options_str.split(",") if gas.strip()]
+                self._enabled_gases = set(gas_options)
+            else:
+                self._enabled_gases = set()
+        except Exception as e:
+            print(f"Warning: Could not read gas_options: {e}")
+            self._enabled_gases = set()
+
+    def get_enabled_gas_names(self):
+        """Get list of enabled gas flow names."""
+        self._update_enabled_gases()
+        return list(self._enabled_gases)
+
+    def is_gas_enabled(self, gas_key):
+        """Check if a specific gas flow is enabled."""
+        self._update_enabled_gases()
+        return gas_key in self._enabled_gases
+
     def apply_flows(self):
         """Apply all gas flow setpoints to readbacks."""
         self.flow_apply.put(1)
@@ -172,14 +175,47 @@ def create_fasstcat_class(gases=None):
         """Start the pulse sequence."""
         self.pulse.start.put(1)
 
-    # Add methods to the class
-    Fasstcat.apply_flows = apply_flows
-    Fasstcat.set_temperature_ramp = set_temperature_ramp
-    Fasstcat.set_pulse_sequence = set_pulse_sequence
-    Fasstcat.start_pulses = start_pulses
+    def get_input_lines(self):
+        """Get all input line devices."""
+        return [getattr(self, f"input_{i}") for i in range(1, 8)]
 
-    return Fasstcat
+    def get_line_a_flows(self):
+        """Get all A line gas flows."""
+        flows = []
+        for i in range(1, 8):
+            input_line = getattr(self, f"input_{i}")
+            if hasattr(input_line, "a"):
+                flows.append(input_line.a)
+        return flows
 
+    def get_line_b_flows(self):
+        """Get all B line gas flows."""
+        flows = []
+        for i in range(1, 8):
+            input_line = getattr(self, f"input_{i}")
+            if hasattr(input_line, "b"):
+                flows.append(input_line.b)
+        return flows
 
-# Create default Fasstcat class
-Fasstcat = create_fasstcat_class()
+    def stop_line_a_flows(self):
+        """Stop all A line gas flows."""
+        statuses = []
+        for flow in self.get_line_a_flows():
+            status = flow.setpoint.put(0.0)
+            statuses.append(status)
+        return statuses
+
+    def stop_line_b_flows(self):
+        """Stop all B line gas flows."""
+        statuses = []
+        for flow in self.get_line_b_flows():
+            status = flow.setpoint.put(0.0)
+            statuses.append(status)
+        return statuses
+
+    def stop_all_flows(self):
+        """Stop all gas flows on all lines."""
+        statuses = []
+        statuses.extend(self.stop_line_a_flows())
+        statuses.extend(self.stop_line_b_flows())
+        return statuses
