@@ -26,7 +26,7 @@ class FasstcatTab(QWidget):
             print(f"Found FASSTCAT model: {fasstcat_model}")
 
             # Create controller tab
-            self.controller_widget = AutoControl(fasstcat_model, self.model)
+            self.controller_widget = AutoControl(fasstcat_model)
             # Add tab widget to layout
             self.layout.addWidget(self.controller_widget)
 

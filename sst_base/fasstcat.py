@@ -14,10 +14,30 @@ class GasFlowPositioner(PVPositionerPC):
 
     Provides setpoint and readback for individual gas flows.
     Uses put completion to determine when motion is done.
+    Prevents setting setpoints when the line is not enabled.
     """
 
     setpoint = Component(EpicsSignal, "SP", kind="config")
     readback = Component(EpicsSignalRO, "RB")
+    enabled = Component(EpicsSignalRO, "ENABLED", kind="config")
+
+    def set(self, value):
+        """
+        Set the setpoint value, but only if the line is enabled.
+
+        Parameters
+        ----------
+        value : float
+            The setpoint value to set
+
+        Returns
+        -------
+        Status
+            The status of the set operation
+        """
+        if not self.enabled.get():
+            raise ValueError(f"Cannot set gas flow setpoint: line is not enabled")
+        return super().set(value)
 
 
 class InputLine(Device):
@@ -26,6 +46,7 @@ class InputLine(Device):
 
     Each input has a gas selection and can have gas flows on both A and B lines.
     The gas selection determines which gas is available for flow control.
+    The enabled status indicates whether each line has an MFC configured.
     """
 
     # Gas flow for line A (if present)
@@ -87,9 +108,6 @@ class Fasstcat(Device):
     # Flow apply trigger
     flow_apply = Component(EpicsSignal, "flowsms}Flow_Apply")
 
-    # Gas options PV (comma-separated string)
-    gas_options = Component(EpicsSignalRO, "Gas_Options")
-
     # Input lines - each represents a physical input with valve and gas flows
     input_1 = Component(InputLine, "flowsms}Input_1_", name="input_1")
     input_2 = Component(InputLine, "flowsms}Input_2_", name="input_2")
@@ -105,23 +123,26 @@ class Fasstcat(Device):
         self._update_enabled_gases()
 
     def _update_enabled_gases(self):
-        """Update the set of enabled gases based on gas_options PV."""
-        try:
-            gas_options_str = self.gas_options.get()
-            if gas_options_str:
-                # Parse comma-separated string into list
-                gas_options = [gas.strip() for gas in gas_options_str.split(",") if gas.strip()]
-                self._enabled_gases = set(gas_options)
-            else:
-                self._enabled_gases = set()
-        except Exception as e:
-            print(f"Warning: Could not read gas_options: {e}")
-            self._enabled_gases = set()
+        """Update the set of enabled gases by walking through inputs."""
+        enabled_gases = set()
+
+        for i in range(1, 8):
+            input_line = getattr(self, f"input_{i}")
+            if hasattr(input_line, "gas_selection"):
+                # Get the enum strings from the gas selection PV
+                try:
+                    enum_strings = input_line.gas_selection.enum_strs
+                    if enum_strings:
+                        enabled_gases.update(enum_strings)
+                except Exception as e:
+                    print(f"Warning: Could not read gas selection for input {i}: {e}")
+
+        self._enabled_gases = enabled_gases
 
     def get_enabled_gas_names(self):
         """Get list of enabled gas flow names."""
         self._update_enabled_gases()
-        return list(self._enabled_gases)
+        return sorted(list(self._enabled_gases))
 
     def is_gas_enabled(self, gas_key):
         """Check if a specific gas flow is enabled."""
@@ -201,16 +222,24 @@ class Fasstcat(Device):
         """Stop all A line gas flows."""
         statuses = []
         for flow in self.get_line_a_flows():
-            status = flow.setpoint.put(0.0)
-            statuses.append(status)
+            try:
+                status = flow.setpoint.put(0.0)
+                statuses.append(status)
+            except ValueError as e:
+                # Skip disabled lines
+                print(f"Warning: {e}")
         return statuses
 
     def stop_line_b_flows(self):
         """Stop all B line gas flows."""
         statuses = []
         for flow in self.get_line_b_flows():
-            status = flow.setpoint.put(0.0)
-            statuses.append(status)
+            try:
+                status = flow.setpoint.put(0.0)
+                statuses.append(status)
+            except ValueError as e:
+                # Skip disabled lines
+                print(f"Warning: {e}")
         return statuses
 
     def stop_all_flows(self):
