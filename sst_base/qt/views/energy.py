@@ -39,7 +39,6 @@ class SST1EnergyMonitor(QGroupBox):
 
         print("Adding energy monitor")
         vbox1.addWidget(AutoMonitor(energy.energy))
-        vbox1.addWidget(AutoMonitor(energy.energy))
 
         top_model = get_top_level_model()
         has_slits = hasattr(top_model.beamline, "slits") and top_model.beamline.slits is not None
@@ -49,11 +48,9 @@ class SST1EnergyMonitor(QGroupBox):
 
         print("Adding CFF monitor")
         vbox1.addWidget(AutoMonitor(energy.cff))
-        vbox1.addWidget(AutoMonitor(energy.cff))
 
         print("Adding grating motor monitor")
         if hasattr(energy, "grating_motor"):
-            vbox1.addWidget(AutoMonitor(energy.grating_motor))
             vbox1.addWidget(AutoMonitor(energy.grating_motor))
 
         self.setLayout(vbox1)
@@ -92,7 +89,6 @@ class SST1EnergyControl(QGroupBox):
         print("Adding energy control")
         if hasattr(energy, "energy"):
             hbox.addWidget(AutoControl(energy.energy))
-            hbox.addWidget(AutoControl(energy.energy))
 
         has_slits = hasattr(top_model.beamline, "slits") and top_model.beamline.slits is not None
         if has_slits:
@@ -102,9 +98,7 @@ class SST1EnergyControl(QGroupBox):
         print("Adding CFF and grating monitors")
         if hasattr(energy, "cff"):
             hbox2.addWidget(AutoMonitor(energy.cff))
-            hbox2.addWidget(AutoMonitor(energy.cff))
         if hasattr(energy, "grating_motor"):
-            hbox2.addWidget(AutoMonitor(energy.grating_motor))
             hbox2.addWidget(AutoMonitor(energy.grating_motor))
 
         self.advancedControlButton = QPushButton("Advanced Controls")
@@ -121,7 +115,6 @@ class SST1EnergyControl(QGroupBox):
         self.advancedDialog = QDialog(self)
         self.advancedDialog.setWindowTitle("Advanced Energy Control")
         layout = QVBoxLayout()
-        advancedControl = AdvancedEnergyControl(self.model, self.advancedDialog)
         advancedControl = AdvancedEnergyControl(self.model, self.advancedDialog)
         layout.addWidget(advancedControl)
         self.advancedDialog.setLayout(layout)
@@ -142,7 +135,6 @@ class AdvancedEnergyControl(QGroupBox):
     """
 
     def __init__(self, model, parent_model=None, parent=None):
-    def __init__(self, model, parent_model=None, parent=None):
         print("Initializing AdvancedEnergyControl")
         super().__init__("Advanced Energy Control", parent)
         self.model = model
@@ -155,12 +147,10 @@ class AdvancedEnergyControl(QGroupBox):
         print("Adding CFF control")
         if hasattr(model, "cff"):
             layout.addWidget(AutoControl(model.cff))
-            layout.addWidget(AutoControl(model.cff))
 
         print("Creating grating controls")
         hbox = QHBoxLayout()
         if hasattr(model, "grating_motor"):
-            hbox.addWidget(AutoMonitor(model.grating_motor))
             hbox.addWidget(AutoMonitor(model.grating_motor))
 
             print("Setting up grating selection")
