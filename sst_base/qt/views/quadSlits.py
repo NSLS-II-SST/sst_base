@@ -14,14 +14,14 @@ class QuadSlitsMonitor(SwitchableMotorMonitor):
         Parent model for the widget
     """
 
-    def __init__(self, model, parent_model, *args, **kwargs):
+    def __init__(self, model, *args, parent_model=None, **kwargs):
         super().__init__(
             model=model,
             parent_model=parent_model,
             pseudo_title="Slits",
             real_title="Real Motors",
             title=model.label,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -38,12 +38,12 @@ class QuadSlitsControl(SwitchableMotorControl):
         Parent model for the widget
     """
 
-    def __init__(self, model, parent_model, *args, **kwargs):
+    def __init__(self, model, *args, parent_model=None, **kwargs):
         super().__init__(
             model=model,
             parent_model=parent_model,
             pseudo_title="Slits",
             real_title="Real Motors",
             title=model.label,
-            **kwargs
+            **kwargs,
         )
