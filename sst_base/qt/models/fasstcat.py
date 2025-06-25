@@ -16,7 +16,7 @@ from ..views.fasstcat import (
     PulseMonitor,
     FasstcatController,
     FasstcatMonitor,
-    GasFlowsController,
+    CustomGasFlowsWidget,
 )
 
 
@@ -32,17 +32,6 @@ class GasFlowModel(PVPositionerModel):
         # Initialize the parent PVPositionerModel
         super().__init__(name=name, obj=obj, group=group, long_name=long_name)
         self.gas_name = obj.gas_name if hasattr(obj, "gas_name") else name
-
-    """
-        self._initialize()
-
-    @initialize_with_retry
-    def _initialize(self):
-        print("Initializing GasFlowModel")
-        if not super()._initialize():
-            return False
-        return True
-    """
 
     def _check_moving(self):
         """
@@ -63,14 +52,25 @@ class GasFlowModel(PVPositionerModel):
             threshold = max(abs(setpoint) * 0.01, 0.1)
             return abs(setpoint - readback) > threshold
 
-        except Exception:
+        except Exception as e:
+            print(f"[{self.gas_name}] Error checking moving status: {e}")
             return False
 
     def set(self, value):
         """
         Override to set gas flow setpoint.
         For gas flows, we need to trigger Flow_Apply after setting the setpoint.
+        Also check if the line is enabled before setting.
         """
+        # Check if the line is enabled
+        if hasattr(self.obj, "enabled"):
+            try:
+                enabled = self.obj.enabled.get(timeout=0.2)
+                if not enabled:
+                    raise ValueError(f"Cannot set gas flow setpoint: line is not enabled")
+            except Exception as e:
+                print(f"Warning: Could not check enabled status for {self.gas_name}: {e}")
+
         print(f"[{self.gas_name}] Setting gas flow to {value} sccm")
         self._target = value
         self._setpoint = value
@@ -84,12 +84,23 @@ class GasFlowModel(PVPositionerModel):
         print(f"[{self.gas_name}] Done setting gas flow setpoint")
         return value
 
+    @property
+    def line_enabled(self):
+        """Check if this gas flow line is enabled."""
+        if hasattr(self.obj, "enabled"):
+            try:
+                return self.obj.enabled.get(timeout=0.2)
+            except Exception:
+                return False
+        return True  # Default to enabled if no enabled PV
+
 
 class InputLineModel:
     """
     Model for a single input line with gas selection and gas flows.
 
     This represents the physical input with its gas selection and A/B gas flows.
+    The enabled status indicates whether each line has an MFC configured.
     """
 
     def __init__(self, name, obj, group, long_name, **kwargs):
@@ -107,10 +118,20 @@ class InputLineModel:
             name=f"{name}_gas_name", obj=obj.gas_name, group=group, long_name=f"{name} Gas Name"
         )
 
-        # Create models for A and B gas flows
+        # Create models for A and B gas flows (they include their own enabled status)
         self.a_flow = GasFlowModel(name=f"{name}_a_flow", obj=obj.a, group=group, long_name=f"{name} A Line Flow")
 
         self.b_flow = GasFlowModel(name=f"{name}_b_flow", obj=obj.b, group=group, long_name=f"{name} B Line Flow")
+
+    @property
+    def a_enabled(self):
+        """Check if A line is enabled."""
+        return self.a_flow.line_enabled
+
+    @property
+    def b_enabled(self):
+        """Check if B line is enabled."""
+        return self.b_flow.line_enabled
 
 
 class GasFlowsTupleModel(MultiMotorModel):
@@ -121,7 +142,7 @@ class GasFlowsTupleModel(MultiMotorModel):
     similar to motor tuples, while providing access to individual gas models.
     """
 
-    default_controller = GasFlowsController
+    default_controller = CustomGasFlowsWidget
     default_monitor = MotorTupleMonitor
 
     def __init__(self, name, obj, group, long_name, **kwargs):
