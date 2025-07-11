@@ -4,9 +4,10 @@ FASSTCAT tab for gas control and temperature management.
 
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QMessageBox
 from nbs_gui.views.views import AutoControl
+from sst_base.qt.plans.fasstcatSegments import FasstcatPlanWidget
 
 
-class FasstcatTab(QWidget):
+class RealFasstcatTab(QWidget):
     name = "FASSTCAT"
 
     def __init__(self, model, parent=None):
@@ -50,3 +51,16 @@ class FasstcatTab(QWidget):
         # Add to layout
         error_layout.addWidget(error_label)
         self.layout.addWidget(error_widget)
+
+
+class FasstcatTab(QWidget):
+    name = "FASSTCAT Segments"
+
+    def __init__(self, model, parent=None):
+        super().__init__(parent)
+        self.model = model
+        self.layout = QVBoxLayout(self)
+        print("Initializing FasstcatTab")
+        # Create segments widget
+        self.segments_widget = FasstcatPlanWidget(model)
+        self.layout.addWidget(self.segments_widget)

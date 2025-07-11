@@ -65,17 +65,49 @@ class InputLine(Device):
 class EurothermControl(Device):
     """
     Temperature control for Eurotherm.
+
+    Attributes
+    ----------
+    setpoint : EpicsSignal
+        Temperature setpoint (degC).
+    rate : EpicsSignal
+        Ramp rate (degC/min).
+    start : EpicsSignal
+        Trigger to start ramp.
+    readback : EpicsSignalRO
+        Current temperature (degC).
+    hold : EpicsSignal
+        Hold at current temperature for a specified time (minutes).
+    status : EpicsSignalRO
+        Status of the Eurotherm controller (0=idle, 1=running).
     """
 
     setpoint = Component(EpicsSignal, "Temp_Setpoint", kind="config")
     rate = Component(EpicsSignal, "Temp_Rate", kind="config")
     start = Component(EpicsSignal, "Temp_Trigger", kind="omitted")
     readback = Component(EpicsSignalRO, "Temp_Readback")
+    hold = Component(EpicsSignal, "Temp_Hold", kind="config")
+    status = Component(EpicsSignalRO, "Status", kind="config", string=True)
 
 
 class PulseControl(Device):
     """
     Pulse mode control.
+
+    Attributes
+    ----------
+    line_select : EpicsSignal
+        Line selection (A or B).
+    line_mode : EpicsSignal
+        Mode (continuous or pulses).
+    count : EpicsSignal
+        Number of pulses.
+    time : EpicsSignal
+        Time per pulse (seconds).
+    start : EpicsSignal
+        Trigger to start pulse sequence.
+    pulse_status : EpicsSignalRO
+        Status of the pulse controller (0=idle, 1=running).
     """
 
     line_select = Component(EpicsSignal, "Line_Select", string=True, kind="config")
@@ -83,7 +115,7 @@ class PulseControl(Device):
     count = Component(EpicsSignal, "Pulse_Count", kind="config")
     time = Component(EpicsSignal, "Pulse_Time", kind="config")
     start = Component(EpicsSignal, "Pulse_Trigger", kind="omitted")
-    status = Component(EpicsSignalRO, "Pulse_Status", kind="config")
+    status = Component(EpicsSignalRO, "Pulse_Status", kind="config", string=True)
 
 
 class Fasstcat(Device):
@@ -107,6 +139,9 @@ class Fasstcat(Device):
 
     # Flow apply trigger
     flow_apply = Component(EpicsSignal, "flowsms}Flow_Apply")
+
+    # Segment status
+    segment_status = Component(EpicsSignalRO, "}Segment_Status", kind="config", string=True)
 
     # Input lines - each represents a physical input with valve and gas flows
     input_1 = Component(InputLine, "flowsms}Input_1_", name="input_1")
