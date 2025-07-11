@@ -23,6 +23,7 @@ homepage = "https://github.com/NSLS-II-SST/sst_base"
 
 [project.entry-points."nbs_gui.tabs"]
 sst-gui-samples = "sst_base.qt.tabs.sampleTab:SampleTab"
+sst-gui-testing = "sst_base.qt.tabs.testingTab:TestingTab"
 
 [project.entry-points."nbs_gui.widgets"]
 sst-gui-header = "sst_base.qt.widgets.header:NSLSHeader"

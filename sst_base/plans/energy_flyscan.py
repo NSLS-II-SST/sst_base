@@ -1,7 +1,7 @@
 from nbs_bl.plans.scans import nbs_fly_scan
 from nbs_bl.beamline import GLOBAL_BEAMLINE as bl
 from nbs_bl.utils import merge_func
-from nbs_bl.help import add_to_scan_list
+from nbs_bl.help import add_to_scan_list, add_to_plan_time_dict
 
 
 @add_to_scan_list
@@ -24,3 +24,6 @@ def nbs_energy_flyscan(start, stop, speed, period=None, bidirectional=False, swe
             en, start, stop, speed, period=period, bidirectional=bidirectional, sweeps=sweeps, **kwargs
         )
     )
+
+
+add_to_plan_time_dict(nbs_energy_flyscan, "fly_scan_estimate", fixed=5)
