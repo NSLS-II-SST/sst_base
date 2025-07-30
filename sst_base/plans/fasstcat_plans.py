@@ -13,6 +13,8 @@ def fasstcat_segment(
     line_select=None,
     pulse_params=None,
     md=None,
+    wait_for_previous_segment=True,
+    wait_for_current_segment=False,
 ):
     """
     Launch a FASSTCAT segment: set temperature, gas flows, and pulse mode.
@@ -39,6 +41,9 @@ def fasstcat_segment(
         Metadata for the run.
     """
     fasstcat = GLOBAL_BEAMLINE["fasstcat"]
+
+    if wait_for_previous_segment:
+        yield from wait_for_fasstcat_segment()
 
     # Set temperature setpoint and ramp rate
     yield from bps.abs_set(fasstcat.eurotherm.setpoint, temp_sp)
@@ -76,6 +81,9 @@ def fasstcat_segment(
 
     yield from bps.mv(fasstcat.eurotherm.start, 1)
     yield from bps.sleep(5)
+
+    if wait_for_current_segment:
+        yield from wait_for_fasstcat_segment()
 
 
 def wait_for_fasstcat_segment():

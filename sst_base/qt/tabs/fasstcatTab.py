@@ -2,13 +2,13 @@
 FASSTCAT tab for gas control and temperature management.
 """
 
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QMessageBox
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QMessageBox, QTabWidget
 from nbs_gui.views.views import AutoControl
 from sst_base.qt.plans.fasstcatSegments import FasstcatPlanWidget
 
 
-class RealFasstcatTab(QWidget):
-    name = "FASSTCAT"
+class FasstcatDeviceTab(QWidget):
+    name = "Status"
 
     def __init__(self, model, parent=None):
         print("Initializing FasstcatTab")
@@ -53,8 +53,8 @@ class RealFasstcatTab(QWidget):
         self.layout.addWidget(error_widget)
 
 
-class FasstcatTab(QWidget):
-    name = "FASSTCAT Segments"
+class FasstcatPlanTab(QWidget):
+    name = "Segment Editor"
 
     def __init__(self, model, parent=None):
         super().__init__(parent)
@@ -64,3 +64,16 @@ class FasstcatTab(QWidget):
         # Create segments widget
         self.segments_widget = FasstcatPlanWidget(model)
         self.layout.addWidget(self.segments_widget)
+
+
+class FasstcatTab(QWidget):
+    name = "FASSTCAT"
+
+    def __init__(self, model, parent=None):
+        super().__init__(parent)
+        self.model = model
+        self.layout = QVBoxLayout(self)
+        self.tab_widget = QTabWidget()
+        self.layout.addWidget(self.tab_widget)
+        self.tab_widget.addTab(FasstcatDeviceTab(model), "Device")
+        self.tab_widget.addTab(FasstcatPlanTab(model), "Plans")

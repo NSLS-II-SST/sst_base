@@ -13,13 +13,83 @@ from qtpy.QtWidgets import (
     QAbstractItemView,
     QStyledItemDelegate,
     QComboBox,
+    QDialog,
+    QListWidget,
+    QListWidgetItem,
+    QDialogButtonBox,
+    QGroupBox,
+    QHeaderView,
+    QSplitter,
 )
 from qtpy.QtCore import Qt, Slot, QPoint
 from bluesky_queueserver_api import BPlan
 from nbs_gui.plans.base import PlanWidgetBase, BasicPlanWidget
 from nbs_gui.plans.planParam import ParamGroup, SpinBoxParam, ComboBoxParam, ParamGroupBase
+from nbs_gui.widgets.QtReQueueStaging import QtReQueueStaging
+from nbs_gui.models.QtReQueueStaging import QueueStagingModel
+from nbs_gui.widgets.planSubmission import PlanSubmissionBase
+import copy
 
 print("Loaded fasscatSegments imports")
+
+
+class FasstcatMeasurementPlansWidget(PlanSubmissionBase):
+    def __init__(self, model, plan_queue, parent=None):
+        self.plan_queue = plan_queue
+        super().__init__(model, parent)
+
+    def setup_submission_buttons(self):
+        self.submit_button = QPushButton("Add to Segment", self)
+        self.submit_button.clicked.connect(self.submit_plan)
+        self.submit_button.setEnabled(False)
+        self.submission_buttons = [self.submit_button]
+
+    def submit_plan(self):
+        items = self.action_widget.currentWidget().create_plan_items()
+        if items:
+            self.plan_queue.queue_item_add_batch(items=items)
+
+
+class MeasurementPlansDialog(QDialog):
+    """
+    Dialog for selecting measurement plans to be executed during a FASSTCAT segment.
+    Uses PlanSubmissionWidget as the main interface.
+    """
+
+    def __init__(self, model, plan_queue, parent=None):
+        self.plan_queue = plan_queue
+        super().__init__(parent)
+        self.setWindowTitle("Select Measurement Plans")
+        self.setModal(True)
+        self.setMinimumSize(800, 600)
+
+        # Add border and styling
+        self.setStyleSheet(
+            """
+            QDialog {
+                border: 2px solid #cccccc;
+                background-color: #f8f8f8;
+            }
+        """
+        )
+
+        layout = QVBoxLayout()
+
+        # Add instruction label
+        label = QLabel("Select measurement plans to execute during this segment:")
+        layout.addWidget(label)
+
+        # Create and add the PlanSubmissionWidget
+        self.plan_submission_widget = FasstcatMeasurementPlansWidget(model, self.plan_queue, self)
+        layout.addWidget(self.plan_submission_widget)
+
+        # Add dialog buttons
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+
+        self.setLayout(layout)
 
 
 class SegmentDelegate(QStyledItemDelegate):
@@ -138,6 +208,43 @@ class SegmentViewer(QTableWidget):
         self.refresh()
         self.cellChanged.connect(self._on_cell_changed)
 
+    def create_widget_with_buttons(self):
+        """
+        Create a widget containing the table and control buttons.
+
+        Returns
+        -------
+        QWidget
+            Widget containing the table and buttons
+        """
+        widget = QWidget()
+        layout = QVBoxLayout()
+
+        # Create button bar
+        button_bar = QHBoxLayout()
+        self.btn_left = QPushButton("Left")
+        self.btn_right = QPushButton("Right")
+        self.btn_delete = QPushButton("Delete")
+        self.btn_copy = QPushButton("Copy")
+
+        # Connect buttons to methods
+        self.btn_left.clicked.connect(self.move_left)
+        self.btn_right.clicked.connect(self.move_right)
+        self.btn_delete.clicked.connect(self.delete_segment)
+        self.btn_copy.clicked.connect(self.copy_segment)
+
+        button_bar.addWidget(self.btn_left)
+        button_bar.addWidget(self.btn_right)
+        button_bar.addWidget(self.btn_delete)
+        button_bar.addWidget(self.btn_copy)
+
+        # Add button bar and table to layout
+        layout.addLayout(button_bar)
+        layout.addWidget(self)
+
+        widget.setLayout(layout)
+        return widget
+
     def _get_pulse_count(self, seg):
         """Safely get pulse count from segment."""
         if seg is None or not hasattr(seg, "kwargs") or not seg.kwargs:
@@ -178,6 +285,15 @@ class SegmentViewer(QTableWidget):
             return ""
         return seg.kwargs.get("gas_flows", {}).get(f"{input_name}_b", "")
 
+    def _get_measurement_plans(self, seg):
+        """Safely get measurement plans from segment."""
+        if seg is None or not hasattr(seg, "kwargs") or not seg.kwargs:
+            return ""
+        plans = seg.kwargs.get("measurement_plan_display", [])
+        if plans:
+            return ", ".join(plans)
+        return ""
+
     def refresh(self):
         self.blockSignals(True)
         property_names = [
@@ -188,6 +304,7 @@ class SegmentViewer(QTableWidget):
             ("Pulse Line", "line_select"),
             ("Pulse Count", self._get_pulse_count),
             ("Pulse Time", self._get_pulse_time),
+            ("Measurement Plans", self._get_measurement_plans),
         ]
         all_gas_lines = set()
         for seg in self.segment_list:
@@ -269,6 +386,13 @@ class SegmentViewer(QTableWidget):
             seg.kwargs.setdefault("pulse_params", {})["count"] = value
         elif key == "Pulse Time":
             seg.kwargs.setdefault("pulse_params", {})["time"] = value
+        elif key == "Measurement Plans":
+            # Parse comma-separated plans into a list
+            if value.strip():
+                plans = [plan.strip() for plan in value.split(",")]
+                seg.kwargs["measurement_plans"] = plans
+            else:
+                seg.kwargs["measurement_plans"] = []
         self.refresh()
 
     def move_left(self):
@@ -456,8 +580,11 @@ class FasstcatSegmentEditor(BasicPlanWidget):
         print("FasstcatSegmentEditor setup_widget added params")
         # Stack all sections vertically
         self.basePlanLayout.addWidget(self.gas_group)
-        self.basePlanLayout.addWidget(self.temp_group)
-        self.basePlanLayout.addWidget(self.pulse_group)
+
+        temp_pulse_hbox = QHBoxLayout()
+        temp_pulse_hbox.addWidget(self.temp_group)
+        temp_pulse_hbox.addWidget(self.pulse_group)
+        self.basePlanLayout.addLayout(temp_pulse_hbox)
 
     def create_plan_items(self):
         """
@@ -502,45 +629,57 @@ class FasstcatSegmentEditor(BasicPlanWidget):
 class FasstcatPlanWidget(QWidget):
     def __init__(self, model, parent=None):
         super().__init__(parent)
-        layout = QHBoxLayout()
+        layout = QVBoxLayout()
         print("FasstcatPlanWidget init")
         self.editor = FasstcatSegmentEditor(model, self)
         print("FasstcatSegmentEditor created")
         self.segments = []
         self.viewer = SegmentViewer(self.segments, self.editor)
         print("SegmentViewer created")
+        self.staging_model = QueueStagingModel(model.run_engine)
+        print("QueueStagingModel created")
+        self.staging_widget = QtReQueueStaging(model, self.staging_model, self)
+        print("QtReQueueStaging created")
+
+        # Create splitter for editor and viewer
+        self.splitter = QSplitter(Qt.Horizontal)
+
+        # Create editor section
+        editor_widget = QWidget()
         editor_layout = QVBoxLayout()
-        # Add global segment control buttons
-
         editor_layout.addWidget(self.editor)
-        viewer_layout = QVBoxLayout()
+        editor_layout.addWidget(self.staging_widget)
 
-        button_bar = QHBoxLayout()
-        self.btn_left = QPushButton("Left")
-        self.btn_right = QPushButton("Right")
-        self.btn_delete = QPushButton("Delete")
-        self.btn_copy = QPushButton("Copy")
-        button_bar.addWidget(self.btn_left)
-        button_bar.addWidget(self.btn_right)
-        button_bar.addWidget(self.btn_delete)
-        button_bar.addWidget(self.btn_copy)
-        viewer_layout.addLayout(button_bar)
-        viewer_layout.addWidget(self.viewer)
+        # Add measurement plans button
+        self.measurement_plans_btn = QPushButton("Add plans")
+        self.measurement_plans_btn.clicked.connect(self.on_measurement_plans)
+        editor_layout.addWidget(self.measurement_plans_btn)
+
+        # Add segment button
         self.add_segment_btn = QPushButton("Add Segment")
         self.add_segment_btn.clicked.connect(self.on_add_segment)
         editor_layout.addWidget(self.add_segment_btn)
 
+        editor_widget.setLayout(editor_layout)
+
+        # Create viewer section with buttons
+        viewer_widget = self.viewer.create_widget_with_buttons()
+
+        # Add submit button to viewer section
         self.submit_plan_btn = QPushButton("Submit Plan")
         self.submit_plan_btn.clicked.connect(self.on_submit)
+        viewer_layout = viewer_widget.layout()
         viewer_layout.addWidget(self.submit_plan_btn)
-        layout.addLayout(editor_layout)
-        layout.addLayout(viewer_layout)
+
+        # Add widgets to splitter
+        self.splitter.addWidget(editor_widget)
+        self.splitter.addWidget(viewer_widget)
+
+        # Set splitter proportions (editor takes more space)
+        self.splitter.setSizes([600, 400])
+
+        layout.addWidget(self.splitter)
         self.setLayout(layout)
-        # Connect buttons to SegmentViewer methods
-        self.btn_left.clicked.connect(self.viewer.move_left)
-        self.btn_right.clicked.connect(self.viewer.move_right)
-        self.btn_delete.clicked.connect(self.viewer.delete_segment)
-        self.btn_copy.clicked.connect(self.viewer.copy_segment)
 
     def on_add_segment(self):
         """
@@ -548,15 +687,59 @@ class FasstcatPlanWidget(QWidget):
         """
         items = self.editor.create_plan_items()
         if items:
+            # Get plans from staging and add them to the segment
+            staged_plans = self.staging_model.staged_plans
+            if staged_plans:
+                items[0].kwargs["measurement_plan_display"] = [plan["name"] for plan in staged_plans]
+                items[0].kwargs["staged_plans"] = copy.deepcopy(staged_plans)
+
             self.segments.append(items[0])
             self.viewer.refresh()
+            # Clear plans from staging when a segment is added
+            self.staging_model.queue_clear()
+            # Reset button text
+            self.measurement_plans_btn.setText("Add plans")
+
+    def create_condition_plan(self, staged_plans):
+        plans = []
+        plan_args_list = []
+        plan_kwargs_list = []
+        for item in staged_plans:
+            plans.append(item["name"])
+            plan_args_list.append(item.get("args", []))
+            plan_kwargs_list.append(item.get("kwargs", {}))
+        kwargs = {
+            "plans": plans,
+            "plan_args_list": plan_args_list,
+            "plan_kwargs_list": plan_kwargs_list,
+            "condition": "is_fasstcat_running",
+            "condition_args": [],
+            "condition_kwargs": {},
+        }
+
+        item = BPlan("repeat_plan_sequence_while_condition", **kwargs)
+        return item
+
+    def on_measurement_plans(self):
+        """
+        Open the measurement plans dialog and update the staging area.
+        """
+        dialog = MeasurementPlansDialog(self.editor.model, self.staging_model, self)
+        if dialog.exec() == QDialog.Accepted:
+            # Update the editor's measurement plans
+            pass
 
     def on_submit(self):
         """
         Submit all segments in the pre-submission queue to the main queue.
         """
         for item in self.segments:
+            item.kwargs.pop("measurement_plan_display", None)
+            staged_plans = item.kwargs.pop("staged_plans", None)
             self.editor.submit_plan(item)
+            if staged_plans:
+                condition_plan = self.create_condition_plan(staged_plans)
+                self.editor.submit_plan(condition_plan)
         self.segments.clear()
         self.viewer.refresh()
         QMessageBox.information(self, "Plan Submitted", "All FASSTCAT segments submitted.")
