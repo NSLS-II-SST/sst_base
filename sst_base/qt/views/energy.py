@@ -180,7 +180,23 @@ class AdvancedEnergyControl(QGroupBox):
         msg = "Ensure beamline is opened to multimesh reference ladder for tune"
         if self.confirm_dialog(msg):
             plan = BPlan("tune_grating")
-            self.REClientModel._client.item_execute(plan)
+            if self.REClientModel.re_manager_status.get("manager_state", None) != "idle":
+                QMessageBox.critical(
+                    self,
+                    "Queue Control Error",
+                    "RE Manager is not idle. Please stop the queue before executing grating tune",
+                    QMessageBox.Ok,
+                )
+                return
+            try:
+                self.REClientModel._client.item_execute(plan)
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "Plan Execution Error",
+                    f"Failed to execute tune grating: {str(e)}",
+                    QMessageBox.Ok,
+                )
 
     def change_grating(self):
         """Execute grating change plan."""
@@ -194,7 +210,23 @@ class AdvancedEnergyControl(QGroupBox):
         )
         if self.confirm_dialog(msg):
             plan = BPlan("change_grating", enum)
-            self.REClientModel._client.item_execute(plan)
+            if self.REClientModel.re_manager_status.get("manager_state", None) != "idle":
+                QMessageBox.critical(
+                    self,
+                    "Queue Control Error",
+                    "RE Manager is not idle. Please stop the queue before executing grating change",
+                    QMessageBox.Ok,
+                )
+                return
+            try:
+                self.REClientModel._client.item_execute(plan)
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "Plan Execution Error",
+                    f"Failed to execute change grating: {str(e)}",
+                    QMessageBox.Ok,
+                )
 
     def confirm_dialog(self, confirm_message):
         """Show a confirmation dialog.
