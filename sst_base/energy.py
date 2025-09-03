@@ -887,7 +887,7 @@ def base_set_polarization(pol, en):
     Switching from 0° to 180° or vice versa is identical to switching only the mode without changing the phase.
     """
     
-    if self.polarization.readback.get() < 90:
+    if en.polarization.readback.get() < 90:
         if pol < 90:
                 yield from bps.mv(en.polarization, pol)
         else:
@@ -895,7 +895,7 @@ def base_set_polarization(pol, en):
                 yield from bps.mv(en.polarization, 180)
                 yield from bps.mv(en.polarization, pol)
     
-    if self.polarization.readback.get() > 90:
+    if en.polarization.readback.get() > 90:
         if pol > 90:
                 yield from bps.mv(en.polarization, pol)
         else:
