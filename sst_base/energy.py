@@ -878,5 +878,29 @@ class EnPos(PseudoPositioner):
 
 
 def base_set_polarization(pol, en):
-    yield from bps.mv(en.polarization, pol)
-    return 0
+    """
+    If moving within 0°-90° or 90°-180°, mode stays the same, and EPU phase moves directly to the desired setpoint.
+    
+    If crossing 90°, phase goes to 0, mode switches, and then phase moves to desired setpoint.
+    The above should occur automatically in the underlying EPU programming.  
+    However, this function explicitly runs each step to prevent/reduce glitches.
+    Switching from 0° to 180° or vice versa is identical to switching only the mode without changing the phase.
+    """
+    
+    if self.polarization.readback.get() < 90:
+        if pol < 90:
+                yield from bps.mv(en.polarization, pol)
+        else:
+                yield from bps.mv(en.polarization, 0)
+                yield from bps.mv(en.polarization, 180)
+                yield from bps.mv(en.polarization, pol)
+    
+    if self.polarization.readback.get() > 90:
+        if pol > 90:
+                yield from bps.mv(en.polarization, pol)
+        else:
+                yield from bps.mv(en.polarization, 180)
+                yield from bps.mv(en.polarization, 0)
+                yield from bps.mv(en.polarization, pol)
+    
+    return 0 ## TODO: What is the purpose of this?
