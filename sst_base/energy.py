@@ -206,7 +206,7 @@ class FlyControl(Device):
 
 def EnPosFactory(prefix, *, name, beamline=None, rotation_motor_name="manipr", **kwargs):
     if beamline is not None:
-        rotation_motor = beamline.devices[rotation_motor_name]
+        rotation_motor = beamline.devices.get(rotation_motor_name, None)
     else:
         rotation_motor = None
     return EnPos(prefix, rotation_motor=rotation_motor, name=name, **kwargs)
