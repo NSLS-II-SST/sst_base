@@ -36,3 +36,17 @@ class RBD9103Model(ScalarModel):
             group=group,
             long_name=f"{long_name} Range Actual",
         )
+
+    def iter_models(self):
+        """
+        Yield all contained GUI models for traversal.
+
+        Yields
+        ------
+        BaseModel
+            Contained models.
+        """
+        yield from (
+            self.range_ctrl,
+            self.range_actual,
+        )

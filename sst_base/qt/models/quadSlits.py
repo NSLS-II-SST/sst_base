@@ -69,3 +69,15 @@ class QuadSlitsModel(BaseModel):
     def stop(self):
         """Stop all slit motors."""
         self.obj.stop()
+
+    def iter_models(self):
+        """
+        Yield all contained GUI models for traversal.
+
+        Yields
+        ------
+        BaseModel
+            Contained models.
+        """
+        yield from self.pseudo_motors
+        yield from self.real_motors

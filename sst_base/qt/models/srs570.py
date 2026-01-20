@@ -84,6 +84,19 @@ class SRS570Model(ScalarModel):
         self.gain_models = [self.gain_mode, self.gain_num, self.gain_unit]
         self.control_models = [self.send_all, self.reset, self.invert]
 
+    def iter_models(self):
+        """
+        Yield all contained GUI models for traversal.
+
+        Yields
+        ------
+        BaseModel
+            Contained models.
+        """
+        yield from self.filter_models
+        yield from self.gain_models
+        yield from self.control_models
+        
     @property
     def gain_choices(self):
         """

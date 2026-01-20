@@ -96,9 +96,9 @@ class FlyControl(Device):
     flymove_start = Cpt(EpicsSignal, "FlyMove-Mtr-Go.PROC", name="Energy scan start command")
     flymove_stop = Cpt(EpicsSignal, "FlyMove-Mtr.STOP", name="Energy scan stop command")
     flymove_moving = Cpt(EpicsSignal, "FlyMove-Mtr.MOVN", name="en_flymove_moving")
-    scan_start_ev = Cpt(EpicsSignal, "EScanFirst-SP", name="en_scan_start", kind="config")
-    scan_stop_ev = Cpt(EpicsSignal, "EScanLast-SP", name="en_scan_stop", kind="config")
-    scan_speed_ev = Cpt(EpicsSignal, "EScan-Speed-SP", name="en_scan_speed", kind="config")
+    scan_segments_n = Cpt(EpicsSignal, "NScanRegions-SP", name="en_scan_nregions", kind="config")
+    scan_segments = Cpt(EpicsSignal, "FlySeg-Energy-SP", name="en_scan_segments", kind="config")
+    scan_speed_ev = Cpt(EpicsSignal, "FlySeg-Velo-SP", name="en_scan_speeds", kind="config")
     scan_trigger_width = Cpt(
         EpicsSignal,
         "EScanTriggerWidth-RB",
@@ -147,14 +147,15 @@ class FlyControl(Device):
             else:
                 return False
 
-        st = SubscriptionStatus(self.undulator_dance_enable, check_value, run=True)
         status = self.undulator_dance_enable.get()
         if int(status) & 2:
             print("Undulator sync already disabled")
+            st = SubscriptionStatus(self.undulator_dance_enable, check_value, run=True)
             return st
         else:
             self.undulator_dance_enable.put(0)
             print("Disable undulator sync done")
+            st = SubscriptionStatus(self.undulator_dance_enable, check_value, run=True)
             return st
 
     def flymove(self, start, speed=5):
@@ -171,11 +172,13 @@ class FlyControl(Device):
         move_st = SubscriptionStatus(self.flymove_moving, check_value, run=False)
         return move_st
 
-    def scan_setup(self, start, stop, speed, bidirectional=False, sweeps=1):
+    def scan_setup(self, segments, speeds, bidirectional=False, sweeps=1):
         print(f"[{datetime.now().isoformat()}] Flyscan setup")
-        self.scan_start_ev.set(start).wait(timeout=10)
-        self.scan_stop_ev.set(stop).wait(timeout=10)
-        self.scan_speed_ev.set(speed).wait(timeout=10)
+        self.scan_segments_n.set(len(segments)).wait(timeout=10)
+        self.scan_segments.set(segments).wait(timeout=10)
+        self.scan_speed_ev.set(speeds).wait(timeout=10)
+        start = min(segments)
+        stop = max(segments)
         scan_range = stop - start
         self.scan_trigger_width.set(0.1).wait(timeout=10)
         trig_width = self.scan_trigger_width.get(timeout=10)
@@ -203,7 +206,7 @@ class FlyControl(Device):
 
 def EnPosFactory(prefix, *, name, beamline=None, rotation_motor_name="manipr", **kwargs):
     if beamline is not None:
-        rotation_motor = beamline.devices[rotation_motor_name]
+        rotation_motor = beamline.devices.get(rotation_motor_name, None)
     else:
         rotation_motor = None
     return EnPos(prefix, rotation_motor=rotation_motor, name=name, **kwargs)
@@ -376,16 +379,16 @@ class EnPos(PseudoPositioner):
         self, start, stop, speed, *args, locked=True, time_resolution=None, bidirectional=False, sweeps=1
     ):
         print(f"[{datetime.now().isoformat()}] Energy preflight")
+        flight_segments = [start, stop]
+        flight_speeds = [speed]
         if len(args) > 0:
-            if len(args) % 3 != 0:
+            if len(args) % 2 != 0:
                 raise ValueError(
-                    "args must be start2, stop2, speed2[, start3, stop3, speed3, ...] and must be a multiple of 3"
+                    "args must be start, stop, speed, [stop2, speed2,...]"
                 )
             else:
-                self.flight_segments = (
-                    (args[3 * n], args[3 * n + 1], args[3 * n + 2]) for n in range(len(args) // 3)
-                )
-                print(f"[{datetime.now().isoformat()}] {len(self.flight_segments)} segments defined]")
+                flight_segments += [args[n] for n in range(len(args)) if n %2 == 0]
+                flight_speeds += [args[n] for n in range(len(args)) if n %2 == 1]
         else:
             self.flight_segments = iter(())
 
@@ -400,7 +403,7 @@ class EnPos(PseudoPositioner):
             print("Setting scanlock... do we want to do this?")
             self.scanlock.set(True).wait()
 
-        self.flycontrol.scan_setup(start, stop, speed, bidirectional=bidirectional, sweeps=sweeps)
+        self.flycontrol.scan_setup(flight_segments, flight_speeds, bidirectional=bidirectional, sweeps=sweeps)
 
         # flymove currently unreliable
         print(f"[{datetime.now().isoformat()}] Setting energy to start")
@@ -425,16 +428,8 @@ class EnPos(PseudoPositioner):
 
             def check_value(*, old_value, value, **kwargs):
                 if old_value != 0 and value == 0:  # was moving, but not moving anymore
-                    try:
-                        print(f"[{datetime.now().isoformat()}] got to stopping point")
-                        start, stop, speed = next(self.flight_segments)
-                        print(f"[{datetime.now().isoformat()}] starting next step to {stop}eV at {speed}eV/sec")
-                        self.flycontrol.scan_setup(start, stop, speed).wait()
-                        self.flycontrol.scan_start()
-                        return False
-                    except StopIteration:
-                        print(f"[{datetime.now().isoformat()}] No more segments")
-                        return True
+                    print(f"[{datetime.now().isoformat()}] got to stopping point")
+                    return True
                 else:
                     return False
 
@@ -451,6 +446,7 @@ class EnPos(PseudoPositioner):
             self._flying = False
             self.scanlock.set(False).wait()
             self.flycontrol.disable_undulator_sync().wait()
+            print(f"[{datetime.now().isoformat()}] Landed")
         else:
             print(f"[{datetime.now().isoformat()}] Trying to land, but fly_move not done. How did we get here??")
 
