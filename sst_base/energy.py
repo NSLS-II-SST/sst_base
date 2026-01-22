@@ -14,6 +14,7 @@ from ophyd.pseudopos import pseudo_position_argument, real_position_argument
 import pathlib
 import numpy as np
 import xarray as xr
+from scipy.interpolate import CubicSpline
 from nbs_bl.printing import boxed_text, colored
 from sst_base.motors import PrettyMotorFMBO, FlyerMixin, PrettyMotorFMBODeadbandFlyer
 from nbs_bl.devices import DeadbandEpicsMotor, DeadbandMixin, PseudoSingle
@@ -271,10 +272,11 @@ class EnPos(PseudoPositioner):
     def inverse(self, real_pos):
         """Run an inverse (real -> pseudo) calculation"""
         # print('in Inverse')
+        pol_value = self.pol(real_pos.epuphase, real_pos.epumode)
         ret = self.PseudoPosition(
             energy=real_pos.monoen,
-            polarization=self.pol(real_pos.epuphase, real_pos.epumode),
-            sample_polarization=self.sample_pol(self.pol(real_pos.epuphase, real_pos.epumode)),
+            polarization=pol_value,
+            sample_polarization=self.sample_pol(pol_value),
         )
         # print('Finished inverse')
         return ret
@@ -742,6 +744,9 @@ class EnPos(PseudoPositioner):
             coords={"phase": self.polphase.values},
             dims={"phase"},
         )
+        phase_values = self.phasepol.phase.values
+        pol_values = self.phasepol.values
+        self._phase_to_pol_interp = CubicSpline(phase_values, pol_values, bc_type='natural', extrapolate=False)
         self.rotation_motor = rotation_motor
         super().__init__(a, **kwargs)
         self.epugap.tolerance.set(0.5).wait()
@@ -835,9 +840,9 @@ class EnPos(PseudoPositioner):
         elif mode == 1:
             return -0.5
         elif mode == 2:
-            return float(self.phasepol.interp(phase=np.abs(phase), method="cubic"))
+            return float(self._phase_to_pol_interp(np.abs(phase)))
         elif mode == 3:
-            return 180 - float(self.phasepol.interp(phase=np.abs(phase), method="cubic"))
+            return 180 - float(self._phase_to_pol_interp(np.abs(phase)))
 
     def mode(self, pol, sim=0):
         """
