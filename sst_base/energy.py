@@ -744,7 +744,7 @@ class EnPos(PseudoPositioner):
             coords={"phase": self.polphase.values},
             dims={"phase"},
         )
-        phase_values = self.phasepol.phase.values
+        phase_values = self.polphase.values
         pol_values = self.phasepol.values
         self._phase_to_pol_interp = CubicSpline(phase_values, pol_values, bc_type='natural', extrapolate=False)
         self.rotation_motor = rotation_motor
