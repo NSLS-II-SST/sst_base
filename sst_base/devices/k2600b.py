@@ -22,6 +22,7 @@ class KeithleySMU(Device):
     def __init__(self, *args, **kwargs):
         """ puts it in DCVolts Source mode, sets source voltage to 0, sets voltage limit to 10 mA """
         super().__init__(*args, **kwargs)
+        self._flyers = [self.VMeas, self.IMeas]
         self.SourceSelect.set(1)
         #self.VSource.set(0)
         self.ILim.set(0.01)
@@ -51,6 +52,25 @@ class KeithleySMU(Device):
         st2 = self.IMeas.trigger()
         return st1 & st2
 
+    def kickoff(self):
+        st1 = self.VMeas.kickoff()
+        st2 = self.IMeas.kickoff()
+        return st1 & st2
+
+    def collect(self):
+        yield from self.VMeas.collect()
+        yield from self.IMeas.collect()
+
+    def complete(self):
+        st1 = self.VMeas.complete()
+        st2 = self.IMeas.complete()
+        return st1 & st2
+
+    def describe_collect(self):
+        _collect_dict = {}
+        for flyer in self._flyers:
+            _collect_dict.update(flyer.describe_collect())
+        return _collect_dict
 
   
 #haxSMU = SMU('XF:07ID1{K2601B:1}', name='K2601B')

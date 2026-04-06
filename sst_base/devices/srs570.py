@@ -1,5 +1,5 @@
 from ophyd import Device, Component as Cpt, EpicsSignal, EpicsSignalRO, FormattedComponent as FCpt
-from .detectors.scalar import ADCBuffer
+from sst_base.detectors.scalar import ADCBuffer
 
 class SRS570(Device):
     filter_type = Cpt(EpicsSignal, "filter_type.VAL", kind="config", string=True)
