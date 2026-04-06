@@ -20,40 +20,57 @@ from nslsii.sync_experiment.sync_experiment import (
     validate_proposal,
     should_they_be_here,
     get_current_cycle,
+    is_commissioning_proposal,
 )
 from datetime import datetime
+import os
+import yaml
 
 
 class AuthorizationError(Exception): ...
 
+config_files = [
+    os.path.expanduser("~/.config/n2sn_tools.yml"),
+    "/etc/n2sn_tools.yml",
+]
 
 def authenticate(username, password):
 
-    authenticated = False
-    for server in ["1", "2", "3"]:
-        if authenticated:
+    config = None
+    for fn in config_files:
+        try:
+            with open(fn) as f:
+                config = yaml.safe_load(f)
+        except IOError:
+            pass
+        else:
             break
 
-        auth_server = Server(f"dc{server}.bnl.gov", use_ssl=True)
+    if config is None:
+        raise RuntimeError("Unable to open a config file")
 
-        try:
-            connection = Connection(
-                auth_server,
-                user=f"BNL\\{username}",
-                password=password,
-                authentication=NTLM,
-                auto_bind=True,
-                raise_exceptions=True,
-            )
-            print(f"\nAuthenticated as : {connection.extend.standard.who_am_i()}")
-            authenticated = True
-        except LDAPInvalidCredentialsResult:
-            raise RuntimeError(f"Invalid credentials for user '{username}'.") from None
-        except LDAPSocketOpenError:
-            print(f"DC{server} server connection failed...")
+    server = config.get("common", {}).get("server")
 
-    if not authenticated:
-        raise RuntimeError("All authentication servers are unavailable.")
+    if server is None:
+        raise RuntimeError("Server name not found!")
+
+    auth_server = Server(server, use_ssl=True)
+
+    try:
+        connection = Connection(
+            auth_server,
+            user=f"BNL\\{username}",
+            password=password,
+            authentication=NTLM,
+            auto_bind=True,
+            raise_exceptions=True,
+        )
+        print(f"\nAuthenticated as : {connection.extend.standard.who_am_i()}")
+
+    except LDAPInvalidCredentialsResult:
+        raise RuntimeError(f"Invalid credentials for user '{username}'.") from None
+    except LDAPSocketOpenError:
+        print(f"{server} server connection failed...")
 
 
 def sync_experiment(proposal_number, beamline, saf, username, password, redis_settings):
@@ -106,7 +123,11 @@ def sync_experiment(proposal_number, beamline, saf, username, password, redis_se
         md["data_session"] = new_data_session
         md["username"] = username
         md["start_datetime"] = datetime.now().isoformat()
-        md["cycle"] = get_current_cycle()
+        md["cycle"] = (
+            "commissioning"
+            if is_commissioning_proposal(str(proposal_number), beamline)
+            else get_current_cycle()
+        )
         md["saf"] = saf
         md["proposal"] = {
             "proposal_id": proposal_data.get("proposal_id"),
