@@ -191,7 +191,7 @@ class RedisProposalBox(RedisStatusBox):
         )
         prefix = redis_settings.get("prefix", "")
         print("Making QtRedisJSONDict")
-        redis_dict = QtRedisJSONDict(redis_client, prefix, "", parent=self)
+        redis_dict = QtRedisJSONDict(redis_client, prefix, "")
 
         # Initialize with our own Redis dictionary
         super().__init__(
