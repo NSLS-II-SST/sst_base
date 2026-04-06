@@ -17,7 +17,7 @@ from ophyd import (
     Signal,
     EpicsSignalRO,
 )
-from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite, resource_factory
+from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite, FileStoreHDF5IterativeWrite, resource_factory
 from ophyd.areadetector.plugins import ImagePlugin_V33
 from ophyd import Component as Cpt
 from nslsii.ad33 import SingleTriggerV33, StatsPluginV33
@@ -44,6 +44,23 @@ class ExternalFileReference(Signal):
             dict(external="FILESTORE:", dtype="array", shape=self.shape)
         )
         return res
+
+class HDF5PluginWithProposalDirectory(FileStoreHDF5IterativeWrite):
+    """Add this as a component to detectors that write HDF5 files."""
+    def __init__(self, *args, md, camera_name, write_path_template="/nsls2/data/sst/proposals", date_template="%Y/%m/%d/", **kwargs):
+        super().__init__(*args, write_path_template="", root=write_path_template, **kwargs)
+        self.md = md
+        self.camera_name = camera_name
+        self.date_template = date_template
+        
+    def make_filename(self):
+        proposal_path = f"{self.md['cycle']}/{self.md['data_session']}/assets/{self.camera_name}"
+        write_path = join(self.write_path_template, proposal_path, self.date_template)
+        filename = datetime.now().strftime("%Y-%m-%dT%H-%M-%S-%f")
+        formatter = datetime.now().strftime
+        write_path = formatter(write_path)
+        read_path = write_path
+        return filename, read_path, write_path
 
 
 class TIFFPluginWithProposalDirectory(TIFFPlugin, FileStoreTIFFIterativeWrite):
