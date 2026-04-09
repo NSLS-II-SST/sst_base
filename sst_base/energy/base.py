@@ -143,7 +143,7 @@ class FlyControl(DeadbandPVPositioner):
 
     def scan_setup(self, segments, speeds, bidirectional=False, sweeps=1):
         print(f"[{datetime.now().isoformat()}] Flyscan setup")
-        self.scan_segments_n.set(len(segments)).wait(timeout=10)
+        self.scan_segments_n.set(len(segments) - 1).wait(timeout=10)
         self.scan_segments.set(segments).wait(timeout=10)
         self.scan_speed_ev.set(speeds).wait(timeout=10)
         start = min(segments)
