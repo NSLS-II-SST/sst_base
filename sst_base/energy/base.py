@@ -44,16 +44,17 @@ class FlyControl(DeadbandPVPositioner):
         "MACROControl-RB",
         write_pv="MACROControl-SP",
         name="Enable Undulator Sync",
+        kind="config",
     )
-    setpoint = Cpt(EpicsSignal, "FlyMove-Mtr-SP-Go")
-    readback = Cpt(EpicsSignal, "FlyMove-Mtr.RBV")
+    setpoint = Cpt(EpicsSignal, "FlyMove-Mtr-SP-Go", kind="hinted")
+    readback = Cpt(EpicsSignal, "FlyMove-Mtr.RBV", kind="hinted")
 
     flymove_stop_ev = Cpt(EpicsSignal, "FlyMove-Mtr-SP", name="Energy scan stop energy", kind="config")
-    flymove_start = Cpt(EpicsSignal, "FlyMove-Mtr-Go.PROC", name="Energy scan start command")
+    flymove_start = Cpt(EpicsSignal, "FlyMove-Mtr-Go.PROC", name="Energy scan start command", kind="config")
 
     speed = Cpt(EpicsSignal, "FlyMove-Speed-SP", name="Energy scan speed", kind="config")
-    stop_signal = Cpt(EpicsSignal, "FlyMove-Mtr.STOP", name="Energy scan stop command")
-    done = Cpt(EpicsSignalRO, "FlyMove-Mtr.DMOV", name="en_flymove_done")
+    stop_signal = Cpt(EpicsSignal, "FlyMove-Mtr.STOP", name="Energy scan stop command", kind="config")
+    done = Cpt(EpicsSignalRO, "FlyMove-Mtr.DMOV", name="en_flymove_done", kind="config")
     done_value = 1
 
     scan_segments_n = Cpt(EpicsSignal, "NScanRegions-SP", name="en_scan_nregions", kind="config")
@@ -73,10 +74,10 @@ class FlyControl(DeadbandPVPositioner):
         name="num_triggers",
         kind="config",
     )
-    scan_start_go = Cpt(EpicsSignal, "FlyScan-Mtr-Go.PROC", name="scan_start")
+    scan_start_go = Cpt(EpicsSignal, "FlyScan-Mtr-Go.PROC", name="scan_start", kind="config")
     scan_type = Cpt(EpicsSignal, "FlyScan-Type-SP", name="scan_type", kind="config")
     num_scans = Cpt(EpicsSignal, "EScanNScans-SP", name="num_scans", kind="config")
-    scanning = Cpt(EpicsSignal, "FlyScan-Mtr.MOVN", name="scan_moving")
+    scanning = Cpt(EpicsSignal, "FlyScan-Mtr.MOVN", name="scan_moving", kind="config")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
