@@ -70,6 +70,7 @@ class U42(UndulatorMotor):
     def move(self, position,**kwargs):
         self._check_and_enable()
         super().move(position,**kwargs)
+        
 
 class EnergyTender(EnergyFlyerBase, Device):
     speed = Cpt(EpicsSignal,"FlyMove-Speed-RB",write_pv="FlyMove-Speed-SP",kind="config")    
@@ -95,3 +96,10 @@ class EnergyTender(EnergyFlyerBase, Device):
 
     def set_mono_crystal(self, crystal):
         self.mono.set_crystal(crystal)
+
+
+    def get_flymove_max_speed(self, start):
+        if start < 3000:
+            return 1.5
+        else:
+            return 1.5

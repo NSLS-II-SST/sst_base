@@ -185,6 +185,9 @@ class EnergyFlyerBase:
         self._time_resolution = self._default_time_resolution
         self._flying = False
 
+    def get_flymove_max_speed(self, start):
+        return 20
+
     def preflight(
         self, start, stop, speed, *args, time_resolution=None, bidirectional=False, sweeps=1
     ):
@@ -211,7 +214,7 @@ class EnergyFlyerBase:
 
         print(f"[{datetime.now().isoformat()}] Setting energy to start")
 
-        self.flycontrol.flymove(start, speed=20).wait()
+        self.flycontrol.flymove(start, speed=self.get_flymove_max_speed(start)).wait()
         print(f"[{datetime.now().isoformat()}] Setting energy to start... done")
         self._last_mono_value = start
         self._mono_stop = stop
