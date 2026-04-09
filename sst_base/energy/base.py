@@ -324,14 +324,9 @@ class EnergyFlyerBase:
         return self.flycontrol.check_macro_status()
 
     def enable_macro(self,wait_for_completion=False):
-        # Read status
-        print("Enable undulator sync")
-
         return self.flycontrol.enable_undulator_sync(wait_for_completion=wait_for_completion)
 
     def disable_macro(self,wait_for_completion=False):
-        print("Disable undulator sync")
-
         return self.flycontrol.disable_undulator_sync(wait_for_completion=wait_for_completion)
 
 
