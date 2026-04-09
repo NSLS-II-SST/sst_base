@@ -7,7 +7,7 @@ from ophyd import (
     Device
 )
 
-from sst_base.energy import UndulatorMotor, FlyControl, EnergyFlyerBase
+from .base import UndulatorMotor, FlyControl, EnergyFlyerBase
 from nbs_bl.devices.motors import DeadbandEpicsMotor
 from sst_base.motors import DeadbandFMBOEpicsMotor
 from time import sleep
