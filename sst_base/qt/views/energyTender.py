@@ -1,4 +1,4 @@
- from qtpy.QtWidgets import (
+from qtpy.QtWidgets import (
     QGroupBox,
     QVBoxLayout,
     QHBoxLayout,

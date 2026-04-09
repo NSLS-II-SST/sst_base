@@ -1,4 +1,4 @@
-from ..views.energy import SST2EnergyControl, SST2EnergyMonitor
+from ..views.energyTender import SST2EnergyControl, SST2EnergyMonitor
 from nbs_gui.models import (
     PVPositionerModel,
     MultiMotorModel,
