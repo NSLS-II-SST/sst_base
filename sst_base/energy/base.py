@@ -185,7 +185,8 @@ class EnergyFlyerBase:
         self._flyer_gap_lead = 0.0
         self._time_resolution = self._default_time_resolution
         self._flying = False
-
+        self._sync_status = None
+        
     def get_flymove_max_speed(self, start):
         return 20
 
@@ -210,7 +211,7 @@ class EnergyFlyerBase:
             self._time_resolution = time_resolution
         elif self._time_resolution is None:
             self._time_resolution = self._default_time_resolution
-
+        self._sync_status = self.check_macro_status()
         self.flycontrol.scan_setup(flight_segments, flight_speeds, bidirectional=bidirectional, sweeps=sweeps)
 
         print(f"[{datetime.now().isoformat()}] Setting energy to start")
@@ -250,11 +251,15 @@ class EnergyFlyerBase:
     def land(self):
         if self._fly_move_st.done:
             self._flying = False
-            self.flycontrol.disable_undulator_sync().wait()
+            # self.flycontrol.disable_undulator_sync().wait()
             print(f"[{datetime.now().isoformat()}] Landed")
         else:
             print(f"[{datetime.now().isoformat()}] Trying to land, but fly_move not done. How did we get here??")
 
+        if self._sync_status != "Enabled":
+            self.disable_macro().wait()
+            self._sync_status = None
+        return
     def kickoff(self):
         kickoff_st = DeviceStatus(device=self)
         if self._time_resolution is None:
