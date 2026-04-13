@@ -20,7 +20,7 @@ from sst_base.motors import PrettyMotorFMBO, FlyerMixin, PrettyMotorFMBODeadband
 from nbs_bl.devices import DeadbandEpicsMotor, DeadbandMixin, PseudoSingle
 from nbs_bl.devices.motors import DeadbandPVPositioner
 
-import time
+import time as ttime
 from datetime import datetime
 from ophyd.status import DeviceStatus, SubscriptionStatus
 
@@ -260,6 +260,7 @@ class EnergyFlyerBase:
             self.disable_macro().wait()
             self._sync_status = None
         return
+
     def kickoff(self):
         kickoff_st = DeviceStatus(device=self)
         if self._time_resolution is None:
@@ -278,7 +279,7 @@ class EnergyFlyerBase:
     def _aggregate(self, value, **kwargs):
         name = "energy_readback"
         if self._measuring:
-            t = time()
+            t = ttime.time()
 
             ts = kwargs.get("timestamp", t)
             last_timestamp = self._flyer_timestamp_buffer[-1] if len(self._flyer_timestamp_buffer) > 0 else None
