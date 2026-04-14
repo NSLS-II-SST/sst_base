@@ -1,5 +1,5 @@
 from ophyd import Device, Component as Cpt, EpicsSignal, EpicsSignalRO, FormattedComponent as FCpt
-from .detectors.scalar import ophScalar
+from sst_base.detectors.scalar import ophScalar
 
 
 class RBD9103(Device):
