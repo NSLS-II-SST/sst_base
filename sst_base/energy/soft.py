@@ -118,7 +118,8 @@ class EnergySoft(EnergyFlyerBase, PseudoPositioner):
         self,
         a,
         rotation_motor=None,
-        configpath=pathlib.Path(__file__).parent.absolute() / "config",
+        configpath=pathlib.Path(__file__).parent.parent.absolute() / "config",
+   
         **kwargs,
     ):
         self.gap_fitnew = np.load(configpath / "EPU60_gap_fit.npy")
