@@ -22,6 +22,7 @@ from nslsii.sync_experiment.sync_experiment import (
     get_current_cycle,
     is_commissioning_proposal,
 )
+from nslsii.utils import open_redis_client
 from datetime import datetime
 import os
 import yaml
@@ -92,10 +93,12 @@ def sync_experiment(proposal_number, beamline, saf, username, password, redis_se
     redis_settings : dict
         Redis connection settings containing host, port, db, and prefix
     """
-    redis_client = redis.Redis(
-        host=redis_settings["host"],
-        port=redis_settings.get("port", 6379),
-        db=redis_settings.get("db", 0),
+    default_port = 6380 if redis_settings.get("ssl", False) else 6379
+    redis_client = open_redis_client(
+        redis_url=redis_settings["host"],
+        redis_port=redis_settings.get("port", default_port),
+        redis_ssl=redis_settings.get("ssl", False),
+        redis_db=redis_settings.get("db", 0),
     )
     prefix = redis_settings.get("prefix", "")
     md = RedisJSONDict(redis_client=redis_client, prefix=prefix)
@@ -205,10 +208,12 @@ class RedisProposalBox(RedisStatusBox):
 
         print("Making Redis Client")
         # Create Redis client and dictionary
-        redis_client = redis.Redis(
-            host=redis_settings["host"],
-            port=redis_settings.get("port", 6379),
-            db=redis_settings.get("db", 0),
+        default_port = 6380 if redis_settings.get("ssl", False) else 6379
+        redis_client = open_redis_client(
+            redis_url=redis_settings["host"],
+            redis_port=redis_settings.get("port", default_port),
+            redis_ssl=redis_settings.get("ssl", False),
+            redis_db=redis_settings.get("db", 0),
         )
         prefix = redis_settings.get("prefix", "")
         print("Making QtRedisJSONDict")
