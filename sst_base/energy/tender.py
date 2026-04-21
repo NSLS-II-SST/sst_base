@@ -99,7 +99,7 @@ class EnergyTender(EnergyFlyerBase, Device):
 
 
     def get_flymove_max_speed(self, start):
-        if start < 3000:
+        if start < 2150:
             return 1.5
         else:
-            return 1.5
+            return 5.0
