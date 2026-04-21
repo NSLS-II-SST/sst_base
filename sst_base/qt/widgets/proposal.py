@@ -203,13 +203,7 @@ class RedisProposalBox(RedisStatusBox):
 
         print("Making Redis Client")
         # Create Redis client and dictionary
-        default_port = 6380 if redis_settings.get("ssl", False) else 6379
-        redis_client = open_redis_client(
-            redis_url=redis_settings["host"],
-            redis_port=redis_settings.get("port", default_port),
-            redis_ssl=redis_settings.get("ssl", False),
-            redis_db=redis_settings.get("db", 0),
-        )
+        redis_client = open_redis_client_from_settings(redis_settings)
         prefix = redis_settings.get("prefix", "")
         print("Making QtRedisJSONDict")
         redis_dict = QtRedisJSONDict(redis_client, prefix, "")
