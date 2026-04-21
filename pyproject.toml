@@ -25,7 +25,7 @@ dependencies = [
     "ophyd",
     "numpy",
     "nbs-core>=0.2.0",
-    "nbs-bl>=0.3.0",
+    "nbs-bl>=0.3.1",
 ]
 
 [project.urls]
