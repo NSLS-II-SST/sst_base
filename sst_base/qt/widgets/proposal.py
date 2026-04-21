@@ -22,6 +22,7 @@ from nslsii.sync_experiment.sync_experiment import (
     get_current_cycle,
     is_commissioning_proposal,
 )
+from nbs_bl.redisUtils import open_redis_client_from_settings
 from datetime import datetime
 import os
 import yaml
@@ -92,11 +93,8 @@ def sync_experiment(proposal_number, beamline, saf, username, password, redis_se
     redis_settings : dict
         Redis connection settings containing host, port, db, and prefix
     """
-    redis_client = redis.Redis(
-        host=redis_settings["host"],
-        port=redis_settings.get("port", 6379),
-        db=redis_settings.get("db", 0),
-    )
+    redis_client = open_redis_client_from_settings(redis_settings)
+
     prefix = redis_settings.get("prefix", "")
     md = RedisJSONDict(redis_client=redis_client, prefix=prefix)
 
@@ -205,11 +203,7 @@ class RedisProposalBox(RedisStatusBox):
 
         print("Making Redis Client")
         # Create Redis client and dictionary
-        redis_client = redis.Redis(
-            host=redis_settings["host"],
-            port=redis_settings.get("port", 6379),
-            db=redis_settings.get("db", 0),
-        )
+        redis_client = open_redis_client_from_settings(redis_settings)
         prefix = redis_settings.get("prefix", "")
         print("Making QtRedisJSONDict")
         redis_dict = QtRedisJSONDict(redis_client, prefix, "")
