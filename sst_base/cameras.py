@@ -49,8 +49,14 @@ class ExternalFileReference(Signal):
 class HDF5PluginWithProposalDirectory(HDF5Plugin, FileStoreHDF5IterativeWrite):
     time_stamp = Cpt(ExternalFileReference, value="", kind="normal", shape=[])
     """Add this as a component to detectors that write HDF5 files."""
-    def __init__(self, *args, md, camera_name, write_path_template="/nsls2/data/sst/proposals", date_template="%Y/%m/%d/", **kwargs):
-        super().__init__(*args, write_path_template="", root=write_path_template, **kwargs)
+    def __init__(self, *args, md, camera_name, write_path_template="/nsls2/data/sst/proposals", date_template="%Y/%m/%d/", read_path_template=None, **kwargs):
+        if read_path_template is None:
+            root = write_path_template
+            super().__init__(*args, write_path_template=".", root=write_path_template, **kwargs)
+        else:
+            root = read_path_template
+            super().__init__(*args, write_path_template=write_path_template, root=read_path_template, read_path_template=".", **kwargs)
+
 
         self.md = md
         self.camera_name = camera_name
@@ -71,7 +77,8 @@ class HDF5PluginWithProposalDirectory(HDF5Plugin, FileStoreHDF5IterativeWrite):
         filename = datetime.now().strftime("%Y-%m-%dT%H-%M-%S-%f")
         formatter = datetime.now().strftime
         write_path = formatter(write_path)
-        read_path = write_path
+        read_path = join(self.read_path_template, proposal_path, self.date_template)
+        read_path = formatter(read_path)
         return filename, read_path, write_path
 
     def _generate_resource(self, resource_kwargs):
