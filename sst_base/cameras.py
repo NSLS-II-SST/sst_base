@@ -89,7 +89,11 @@ class ADTSExternalMixinBase:
 
         # Update the shape that describe() will report
         # Multiple images will have multiple timestamps
-        self.time_stamp.shape = [self.get_frames_per_point()]
+        points = self.get_frames_per_point()
+        if points == 1:
+            self.time_stamp.shape = []
+        else:
+            self.time_stamp.shape = [points]
 
         # Query for the AD_TIFF_TS timestamp
         resource, self._ts_datum_factory = resource_factory(
