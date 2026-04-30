@@ -46,9 +46,7 @@ class ExternalFileReference(Signal):
         )
         return res
 
-class HDF5PluginWithProposalDirectory(HDF5Plugin, FileStoreHDF5IterativeWrite):
-    time_stamp = Cpt(ExternalFileReference, value="", kind="normal", shape=[])
-    """Add this as a component to detectors that write HDF5 files."""
+class ProposalDirectoryMixin:
     def __init__(self, *args, md, camera_name, write_path_template="/nsls2/data/sst/proposals", date_template="%Y/%m/%d/", read_path_template=None, **kwargs):
         if read_path_template is None:
             root = write_path_template
@@ -61,15 +59,6 @@ class HDF5PluginWithProposalDirectory(HDF5Plugin, FileStoreHDF5IterativeWrite):
         self.md = md
         self.camera_name = camera_name
         self.date_template = date_template
-        
-        self._ts_datum_factory = None
-        self._ts_resource_uid = ""
-        self._ts_counter = None
-
-    def stage(self):
-        # Start the timestamp counter
-        self._ts_counter = itertools.count()
-        return super().stage()
 
     def make_filename(self):
         proposal_path = f"{self.md['cycle']}/{self.md['data_session']}/assets/{self.camera_name}"
@@ -81,6 +70,19 @@ class HDF5PluginWithProposalDirectory(HDF5Plugin, FileStoreHDF5IterativeWrite):
         read_path = formatter(read_path)
         return filename, read_path, write_path
 
+class ADTSExternalMixinBase:
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._ts_datum_factory = None
+        self._ts_resource_uid = ""
+        self._ts_counter = None
+
+    def stage(self):
+        # Start the timestamp counter
+        self._ts_counter = itertools.count()
+        return super().stage()
+
     def _generate_resource(self, resource_kwargs):
         super()._generate_resource(resource_kwargs)
         fn = PurePath(self._fn).relative_to(self.reg_root)
@@ -91,7 +93,7 @@ class HDF5PluginWithProposalDirectory(HDF5Plugin, FileStoreHDF5IterativeWrite):
 
         # Query for the AD_TIFF_TS timestamp
         resource, self._ts_datum_factory = resource_factory(
-            spec="AD_HDF5_TS",
+            spec=self.ts_spec,
             root=str(self.reg_root),
             resource_path=str(fn),
             resource_kwargs=resource_kwargs,
@@ -113,6 +115,14 @@ class HDF5PluginWithProposalDirectory(HDF5Plugin, FileStoreHDF5IterativeWrite):
         self.time_stamp.put(datum_id)
         return ret
 
+# Note, order is important! ProposalDirectoryMixin must be first.
+class HDF5ProposalPlugin(ProposalDirectoryMixin, HDF5Plugin, FileStoreHDF5IterativeWrite):
+    pass
+
+class HDF5ProposalPluginADTS(ADTSExternalMixinBase,HDF5ProposalPlugin):
+    time_stamp = Cpt(ExternalFileReference, value="", kind="normal", shape=[])
+    ts_spec="AD_HDF5_TS"
+        
 
 class TIFFPluginWithProposalDirectory(TIFFPlugin, FileStoreTIFFIterativeWrite):
     """Add this as a component to detectors that write TIFFs."""
