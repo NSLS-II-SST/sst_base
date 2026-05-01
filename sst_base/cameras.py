@@ -123,7 +123,7 @@ class ADTSExternalMixinBase:
 class HDF5ProposalPlugin(ProposalDirectoryMixin, HDF5Plugin, FileStoreHDF5IterativeWrite):
     pass
 
-class HDF5ProposalPluginADTS(ADTSExternalMixinBase,HDF5ProposalPlugin):
+class HDF5ProposalPluginADTS(ADTSExternalMixinBase, HDF5ProposalPlugin):
     time_stamp = Cpt(ExternalFileReference, value="", kind="normal", shape=[])
     ts_spec="AD_HDF5_TS"
         
