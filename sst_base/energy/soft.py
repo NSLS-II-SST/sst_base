@@ -113,6 +113,7 @@ class EnergySoft(EnergyFlyerBase, PseudoPositioner):
     harmonic = Cpt(Signal, value=1, name="EPU Harmonic", kind="config")
     offset_gap = Cpt(Signal, value=0, name="EPU Gap offset", kind="config")
     rotation_motor = None
+    _real = ['monoen', 'epugap', 'epuphase', 'epumode']
 
     def __init__(
         self,
