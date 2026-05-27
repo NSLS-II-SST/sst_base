@@ -1,4 +1,4 @@
-from nbs_gui.models.base import PVModel, EnumModel
+from nbs_gui.models.base import PVModel, EnumModel, PVModelRO
 from nbs_gui.models.misc import ScalarModel
 from ..views.rbd9103 import CompactRBD9103Monitor
 
@@ -36,6 +36,12 @@ class RBD9103Model(ScalarModel):
             group=group,
             long_name=f"{long_name} Range Actual",
         )
+        self.unit = PVModelRO(
+            name=f"{name}_unit",
+            obj=obj.rbd9103.unit,
+            group=group,
+            long_name=f"{long_name} Unit",
+        )
 
     def iter_models(self):
         """
@@ -49,4 +55,5 @@ class RBD9103Model(ScalarModel):
         yield from (
             self.range_ctrl,
             self.range_actual,
+            self.unit,
         )

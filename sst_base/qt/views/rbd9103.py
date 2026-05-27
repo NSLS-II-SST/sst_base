@@ -1,8 +1,8 @@
 from nbs_gui.widgets.qt_custom import ScrollingComboBox
-from nbs_gui.views.monitors import SIPVMonitor
+from nbs_gui.views.monitors import UnitPVMonitor
 
 
-class CompactRBD9103Monitor(SIPVMonitor):
+class CompactRBD9103Monitor(UnitPVMonitor):
     """
     Compact monitor for RBD9103 detector.
     Shows a compact range drop-down and value with SI-prefixed units.
@@ -14,9 +14,6 @@ class CompactRBD9103Monitor(SIPVMonitor):
             *args,
             parent_model=parent_model,
             orientation=orientation,
-            base_unit="A",
-            min_prefix="p",
-            max_prefix="A",
             **kwargs,
         )
         self.range_combo = ScrollingComboBox(max_visible_items=10)

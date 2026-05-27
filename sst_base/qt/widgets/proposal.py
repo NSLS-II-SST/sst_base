@@ -121,6 +121,7 @@ def sync_experiment(proposal_number, beamline, saf, username, password, redis_se
         md["data_session"] = new_data_session
         md["username"] = username
         md["start_datetime"] = datetime.now().isoformat()
+        md["tiled_access_tags"] = [new_data_session]
         md["cycle"] = (
             "commissioning"
             if is_commissioning_proposal(str(proposal_number), beamline)
