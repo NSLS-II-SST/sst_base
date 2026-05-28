@@ -6,10 +6,15 @@ from nbs_bl.help import add_to_scan_list, add_to_plan_time_dict
 
 @add_to_scan_list
 @merge_func(nbs_fly_scan, omit_params=["motor"], use_func_name=False)
-def nbs_energy_flyscan(start, stop, speed, period=None, bidirectional=False, sweeps=1, **kwargs):
+def nbs_energy_flyscan(start, stop, speed, *args,period=None, bidirectional=False, sweeps=1, **kwargs):
     """
     Parameters
     ----------
+    *args : float, optional
+        Additional scan parameters in groups of 2: stop, speed.
+        For example:
+        start1, stop1, speed1[, stop2, speed2, ...]
+        This allows for multiple trajectory segments in a single scan
     bidirectional : bool
         If True, the scan will be performed up and then down in energy.
     sweeps : int
@@ -21,7 +26,7 @@ def nbs_energy_flyscan(start, stop, speed, period=None, bidirectional=False, swe
         en = bl.energy.parent
     return (
         yield from nbs_fly_scan(
-            en, start, stop, speed, period=period, bidirectional=bidirectional, sweeps=sweeps, **kwargs
+            en, start, stop, speed, *args, period=period, bidirectional=bidirectional, sweeps=sweeps, **kwargs
         )
     )
 

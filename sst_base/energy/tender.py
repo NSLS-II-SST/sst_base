@@ -16,6 +16,11 @@ from time import sleep
 class TenderFlyControl(FlyControl):
     readback = Cpt(EpicsSignal, "XF:07ID6-OP{Mono:DCM1-Ax::ENERGY_MON", kind="hinted", add_prefix=[False,False])
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.tolerance.set(0.05)
+
+
 class DCM_energy(PVPositioner):
     setpoint = Cpt(EpicsSignal,":ENERGY_SP",kind='config')
     readback = Cpt(EpicsSignal,":ENERGY_MON",kind='normal')
