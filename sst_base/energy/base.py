@@ -272,7 +272,7 @@ class EnergyFlyerBase:
         self._flyer_timestamp_buffer = []
 
         # Kind of a hack, because flycontrol doesn't have a fast readback yet
-        self.monoen.readback.subscribe(self._aggregate, run=False)
+        self.flycontrol.readback.subscribe(self._aggregate, run=False)
         kickoff_st.set_finished()
         return kickoff_st
 
@@ -302,7 +302,7 @@ class EnergyFlyerBase:
     def complete(self):
         if self._measuring:
             self._measuring = False
-            self.monoen.readback.clear_sub(self._aggregate)
+            self.flycontrol.readback.clear_sub(self._aggregate)
         completion_status = DeviceStatus(self)
         completion_status.set_finished()
         self._time_resolution = None
@@ -322,7 +322,7 @@ class EnergyFlyerBase:
         dd = dict(
             {
                 "energy_readback": {
-                    "source": self.monoen.readback.pvname,
+                    "source": self.flycontrol.readback.pvname,
                     "dtype": "number",
                     "shape": [],
                 }

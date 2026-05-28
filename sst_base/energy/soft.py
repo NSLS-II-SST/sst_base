@@ -24,6 +24,9 @@ def format_pv(pv):
         "yellow",
     )
 
+class SoftFlyControl(FlyControl):
+    readback = Cpt(EpicsSignal, "XF:07ID1-OP{Mono:PGM1-Ax::ENERGY_MON", kind="hinted", add_prefix=[False,False])
+
 class FMB_Mono_Grating_Type(PVPositioner):
     setpoint = Cpt(EpicsSignal, "_TYPE_SP", string=True, kind="config")
     readback = Cpt(EpicsSignal, "_TYPE_MON", string=True, kind="config")
@@ -109,7 +112,7 @@ class EnergySoft(EnergyFlyerBase, PseudoPositioner):
 
     sim_epu_mode = Cpt(Signal, value=0, name="dont interact with the real EPU", kind="config")
     scanlock = Cpt(Signal, value=0, name="Lock Harmonic, Pitch, Grating for scan", kind="config")
-    flycontrol = Cpt(FlyControl, "SR:C07-ID:G1A{SST1:1}", name="FlyscanControl", kind="config")
+    flycontrol = Cpt(SoftFlyControl, "SR:C07-ID:G1A{SST1:1}", name="FlyscanControl", kind="config")
     harmonic = Cpt(Signal, value=1, name="EPU Harmonic", kind="config")
     offset_gap = Cpt(Signal, value=0, name="EPU Gap offset", kind="config")
     rotation_motor = None

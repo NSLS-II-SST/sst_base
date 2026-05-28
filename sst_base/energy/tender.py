@@ -13,6 +13,9 @@ from sst_base.motors import DeadbandFMBOEpicsMotor
 from time import sleep
 
 
+class TenderFlyControl(FlyControl):
+    readback = Cpt(EpicsSignal, "XF:07ID6-OP{Mono:DCM1-Ax::ENERGY_MON", kind="hinted", add_prefix=[False,False])
+
 class DCM_energy(PVPositioner):
     setpoint = Cpt(EpicsSignal,":ENERGY_SP",kind='config')
     readback = Cpt(EpicsSignal,":ENERGY_MON",kind='normal')
@@ -91,7 +94,7 @@ class EnergyTender(EnergyFlyerBase, Device):
         name="U42 Gap",
         add_prefix=[False,False]
     )
-    flycontrol = Cpt(FlyControl,"SR:C07-ID:G1A{SST2:1}",add_prefix=[False,False])
+    flycontrol = Cpt(TenderFlyControl,"SR:C07-ID:G1A{SST2:1}",add_prefix=[False,False])
     offset_gap = Cpt(EpicsSignal,"EScanIDEnergyOffset-RB",write_pv="EScanIDEnergyOffset-SP",kind='config')
 
     def set_mono_crystal(self, crystal):
