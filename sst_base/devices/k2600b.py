@@ -1,7 +1,11 @@
-from ophyd import EpicsSignal, EpicsSignalRO, Signal, Device, Component as Cpt, Kind, DeviceStatus
+from ophyd import EpicsSignal, Device, Component as Cpt, Kind
+from ophyd.signal import AttributeSignal
+from ophyd.positioner import PositionerBase
 from sst_base.detectors.scalar import ophScalar
+from time import sleep
+from ophyd.status import wait as status_wait
 
-class KeithleySMU(Device):
+class KeithleySMU(Device, PositionerBase):
     """ Keithley 26XXB SMU """
     VLim = Cpt(EpicsSignal, 'SP-LimV', kind='config')
     ILim = Cpt(EpicsSignal, 'SP-LimI', kind='config')
@@ -18,6 +22,7 @@ class KeithleySMU(Device):
     AutorangeVSource = Cpt(EpicsSignal, 'SP-SourAutoRangV', kind='config')
     AutorangeIMeas = Cpt(EpicsSignal, 'SP-MeasAutoRangI', kind='config')
     AutorangeVMeas = Cpt(EpicsSignal, 'SP-MeasAutoRangV', kind='config')
+    SettlingTime = Cpt(AttributeSignal, "_settle_time", kind="config", add_prefix=(False, False))
 
     def __init__(self, *args, **kwargs):
         """ puts it in DCVolts Source mode, sets source voltage to 0, sets voltage limit to 10 mA """
@@ -27,12 +32,63 @@ class KeithleySMU(Device):
         #self.VSource.set(0)
         self.ILim.set(0.01)
         self.OutputEnable.set(1)
-    
-    def set(self, value):
+
+    def move(self, position, wait=True, **kwargs):
+        """Move to a specified position, optionally waiting for motion to
+        complete.
+
+        Parameters
+        ----------
+        position
+            Position to move to
+        moved_cb : callable
+            Call this callback when movement has finished. This callback must
+            accept one keyword argument: 'obj' which will be set to this
+            positioner instance.
+        timeout : float, optional
+            Maximum time to wait for the motion. If None, the default timeout
+            for this positioner is used.
+
+        Returns
+        -------
+        status : MoveStatus
+
+        Raises
+        ------
+        TimeoutError
+            When motion takes longer than `timeout`
+        ValueError
+            On invalid positions
+        RuntimeError
+            If motion fails other than timing out
+        """
+        self._started_moving = False
+
+        status = super().move(position, **kwargs)
         if self.SourceSelect.get() == 1:
-            return self.VSource.set(value)
+            ret = self.VSource.set(position)
         elif self.SourceSelect.get() == 0:
-            return self.ISource.set(value)
+            ret = self.ISource.set(position)
+        else:
+            raise ValueError(f"Invalid source select: {self.SourceSelect.get()}")
+
+        self._done_moving(success=True, value=position)
+        return status
+
+    def get(self, *args, **kwargs):
+        if self.SourceSelect.get() == 1:
+            return self.VSource.get(*args, **kwargs)
+        elif self.SourceSelect.get() == 0:
+            return self.ISource.get(*args, **kwargs)
+        else:
+            raise ValueError(f"Invalid source select: {self.SourceSelect.get()}")
+
+    @property
+    def egu(self):
+        if self.SourceSelect.get() == 1:
+            return "V"
+        elif self.SourceSelect.get() == 0:
+            return "A"
         else:
             raise ValueError(f"Invalid source select: {self.SourceSelect.get()}")
 
